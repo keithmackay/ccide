@@ -336,7 +336,7 @@ export const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ onClose }) => {
         </>
       )}
 
-      <style jsx>{`
+      <style>{`
         .analytics-page {
           max-width: 1200px;
           margin: 0 auto;

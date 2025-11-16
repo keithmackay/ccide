@@ -5,7 +5,6 @@
 
 import {
   WorkflowPhase,
-  Agent,
   AgentContext,
   AgentResult,
   OrchestratorConfig,
@@ -17,8 +16,7 @@ import { AgentRegistry, getAgentRegistry } from './AgentRegistry.js';
 import { AgentCommunication, getAgentCommunication } from './AgentCommunication.js';
 import { WorkflowManager, getWorkflowManager } from './WorkflowManager.js';
 import { ProgressTracker } from './ProgressTracker.js';
-import { EventEmitter } from 'events';
-import * as path from 'path';
+import EventEmitter from 'eventemitter3';
 
 /**
  * Agent orchestrator service
@@ -84,7 +82,7 @@ export class AgentOrchestrator extends EventEmitter {
     });
 
     // Load agents from definitions
-    const agentsDir = path.join(this.config.projectRoot, 'agents');
+    const agentsDir = `${this.config.projectRoot}/agents`;
     await this.registry.loadAgentsFromDefinitions(agentsDir);
 
     console.log('[AgentOrchestrator] Orchestrator initialized');
@@ -147,6 +145,12 @@ export class AgentOrchestrator extends EventEmitter {
     }
 
     const agent = agents[0]; // Use first available agent
+
+    if (!agent) {
+      console.warn('[AgentOrchestrator] Agent is undefined for phase:', phase);
+      await this.completePhase(phase, []);
+      return;
+    }
 
     // Prepare agent context
     const context: AgentContext = {
@@ -278,7 +282,8 @@ export class AgentOrchestrator extends EventEmitter {
     this.progressTracker.addBlocker({
       description: 'Agent ' + agentName + ' encountered an error: ' + (error.message || String(error)),
       phase: state.currentPhase,
-      severity: 'high'
+      severity: 'high',
+      resolved: false
     });
 
     await this.progressTracker.saveState();

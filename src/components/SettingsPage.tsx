@@ -422,7 +422,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onClose }) => {
         {activeTab === 'about' && renderAboutSection()}
       </div>
 
-      <style jsx>{`
+      <style>{`
         .settings-page {
           max-width: 800px;
           margin: 0 auto;

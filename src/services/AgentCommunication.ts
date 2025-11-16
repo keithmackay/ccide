@@ -7,7 +7,7 @@ import {
   AgentMessage,
   MessageType
 } from '../types/index.js';
-import { EventEmitter } from 'events';
+import EventEmitter from 'eventemitter3';
 
 /**
  * Message handler callback
