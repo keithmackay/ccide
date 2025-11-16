@@ -1,292 +1,300 @@
-# CCIDE Data Persistence & Analytics Layer
+# CCIDE Agent Coordination and Orchestration System
 
-This directory contains the data persistence, analytics, and settings management systems for CCIDE (Claude Code IDE).
+This directory contains the core orchestration services for CCIDE (Claude Code IDE), a web-based IDE for LLMs with a complete product development workflow.
 
 ## Architecture Overview
 
-The data layer is built on top of **IndexedDB**, a browser-based NoSQL database that provides:
-- Local-first data storage
-- Offline capability
-- Fast query performance
-- No server-side dependencies
+The orchestration system coordinates specialized agents through a 13-phase development lifecycle, from initial idea to deployment and documentation.
 
-### Core Components
+### Core Services
 
-#### 1. Database Service (`services/Database.ts`)
-A low-level IndexedDB wrapper providing:
-- **Object Stores**: Messages, Settings, Projects
-- **CRUD Operations**: Add, get, update, delete records
-- **Querying**: Index-based queries and custom filtering
-- **Type Safety**: Full TypeScript support
+#### 1. AgentRegistry (`services/AgentRegistry.ts`)
+- **Purpose**: Registry of available agents
+- **Responsibilities**:
+  - Register and manage specialized agents
+  - Lookup agents by name, type, or phase
+  - Provide agent metadata and capabilities
+  - Load agents from markdown definitions
 
-**Key Features:**
-- Singleton pattern for single database instance
-- Promise-based async API
-- Automatic index creation
-- Error handling and validation
+#### 2. AgentCommunication (`services/AgentCommunication.ts`)
+- **Purpose**: Message passing between agents
+- **Responsibilities**:
+  - Send messages between agents
+  - Broadcast messages to all agents
+  - Message history tracking
+  - Event-based communication
+  - Wait for specific messages or responses
 
-#### 2. Analytics Service (`services/AnalyticsService.ts`)
-Tracks all LLM interactions for analytics and insights:
-- **Message Logging**: Records every user-LLM conversation
-- **Project Tagging**: Associates messages with specific projects
-- **Token Tracking**: Monitors token usage across projects and models
-- **Data Export**: JSON export for backup and analysis
+#### 3. WorkflowManager (`services/WorkflowManager.ts`)
+- **Purpose**: State machine for workflow phases
+- **Responsibilities**:
+  - Define and manage 13 workflow phases
+  - Validate phase transitions
+  - Track dependencies between phases
+  - Validate phase completion
+  - Calculate workflow progress
 
-**Analytics Capabilities:**
-- Total messages and token counts
-- Per-project statistics
-- Per-model usage tracking
-- Date range filtering
-- Search functionality
-- Recent message history
+#### 4. ProgressTracker (`services/ProgressTracker.ts`)
+- **Purpose**: Track progress through workflow phases
+- **Responsibilities**:
+  - Maintain workflow state
+  - Track deliverables
+  - Record blockers and issues
+  - Track user approvals
+  - Persist state to disk
+  - Generate progress reports
 
-#### 3. Settings Service (`services/SettingsService.ts`)
-Manages encrypted storage of sensitive configuration:
-- **API Key Encryption**: Uses Web Crypto API (AES-GCM)
-- **Password Protection**: PBKDF2 key derivation (100,000 iterations)
-- **LLM Configurations**: Stores multiple model configurations
-- **User Preferences**: Theme, default model, auto-save settings
+#### 5. AgentOrchestrator (`services/AgentOrchestrator.ts`)
+- **Purpose**: Main orchestrator implementing the 13-phase workflow
+- **Responsibilities**:
+  - Coordinate agent execution
+  - Manage phase transitions
+  - Handle agent completion and errors
+  - Request and track user approvals
+  - Emit events for workflow milestones
 
-**Security Features:**
-- Client-side encryption (data never leaves browser)
-- Salt and IV randomization for each encryption
-- Password validation
-- Secure password change functionality
+#### 6. LLMService (`services/LLMService.ts`)
+- **Purpose**: LLM integration for Claude API and other models
+- **Responsibilities**:
+  - Abstract LLM provider interactions
+  - Support Claude (Anthropic) and OpenAI
+  - Handle streaming and non-streaming requests
+  - Track token usage
 
-#### 4. Project Service (`services/ProjectService.ts`)
-Manages project lifecycle and metadata:
-- **Project Creation**: Generate unique project IDs
-- **Status Management**: Active/archived project states
-- **Metadata Tracking**: Creation/update timestamps, tags, descriptions
-- **Search & Filter**: Find projects by name, tag, or status
-- **Markdown Export/Import**: Sync with markdown file lists
+## Workflow Phases
 
-## Data Models
+The orchestration system implements a 13-phase workflow:
 
-### Message
+1. **Discovery** - Project setup and state assessment
+2. **Specification** - Idea capture and spec creation
+3. **ICP & Personas** - Target audience definition
+4. **Architecture** - Page structure and information architecture
+5. **UI/UX Design** - Wireframes, style guide, and components
+6. **PRD** - Product requirements and implementation plan
+7. **Parallel Planning** - Task breakdown for parallel execution
+8. **Implementation** - Code development
+9. **Code Review** - Quality assurance
+10. **Testing** - Comprehensive testing
+11. **Security** - Security assessment
+12. **Performance** - Optimization
+13. **Deployment** - Production deployment
+14. **Documentation** - Complete documentation
+
+## Type System
+
+All TypeScript interfaces and types are defined in `types/index.ts`:
+
+### Core Interfaces
+
+- **Agent**: Contract for all specialized agents
+- **AgentContext**: Execution context for agents
+- **AgentResult**: Result of agent execution
+- **WorkflowPhase**: Enum of all 13 phases
+- **WorkflowPhaseConfig**: Configuration for each phase
+- **ProgressState**: Current state of the workflow
+- **Deliverable**: Output produced by an agent
+- **AgentMessage**: Inter-agent communication message
+- **OrchestratorConfig**: Configuration for the orchestrator
+- **LLMConfig**: LLM provider configuration
+
+### Enums
+
+- **AgentType**: Agent categories (specification, design, implementation, etc.)
+- **MessageType**: Types of inter-agent messages
+- **DeliverableType**: Types of deliverables (document, code, test, etc.)
+
+## Usage
+
+### Basic Setup
+
 ```typescript
-interface Message {
-  id?: number;
-  timestamp: number;
-  projectId: string;
-  userMessage: string;
-  llmResponse: string;
-  tokens: number;
-  model: string;
-  status: 'success' | 'error';
-}
-```
+import {
+  AgentOrchestrator,
+  OrchestratorConfig,
+  initializeLLMService
+} from './services/index.js';
 
-### StoredLLMConfig
-```typescript
-interface StoredLLMConfig {
-  id: string;
-  provider: 'anthropic' | 'openai' | 'custom';
-  modelName: string;
-  apiKey: string;  // Encrypted in storage
-  isDefault: boolean;
-  maxTokens?: number;
-  temperature?: number;
-  endpoint?: string;
-}
-```
-
-### Settings
-```typescript
-interface Settings {
-  id?: number;
-  llmConfigs: StoredLLMConfig[];
-  preferences: {
-    theme: 'light' | 'dark' | 'auto';
-    defaultModel?: string;
-    autoSave: boolean;
-  };
-  encryptedData?: string;
-  lastUpdated: number;
-}
-```
-
-### Project
-```typescript
-interface Project {
-  id: string;
-  name: string;
-  status: 'active' | 'archived';
-  createdAt: number;
-  updatedAt: number;
-  path: string;
-  description?: string;
-  tags?: string[];
-}
-```
-
-## UI Components
-
-### SettingsPage (`components/SettingsPage.tsx`)
-Provides a comprehensive settings interface with three sections:
-
-1. **Account Section**
-   - Password setup for encryption
-   - Settings unlock interface
-   - Export functionality
-
-2. **LLM Configuration Section**
-   - Add/remove LLM models
-   - Configure API keys (encrypted)
-   - Set default model
-   - Adjust model parameters (max tokens, temperature)
-
-3. **About Section**
-   - Application information
-   - Feature overview
-   - Privacy and security details
-
-### AnalyticsPage (`components/AnalyticsPage.tsx`)
-Displays comprehensive analytics dashboard:
-
-**Filters:**
-- Project selection (all or specific)
-- Date ranges (7d, 30d, custom)
-- Custom date picker
-
-**Statistics:**
-- Total messages count
-- Total token usage
-- Active projects count
-- Models used count
-
-**Visualizations:**
-- Project breakdown table
-- Model usage statistics
-- Recent message history
-- Average tokens per message
-
-## Encryption Details
-
-### Algorithm: AES-GCM
-- **Key Size**: 256 bits
-- **Mode**: Galois/Counter Mode (authenticated encryption)
-- **Random IV**: 12 bytes per encryption
-- **Random Salt**: 16 bytes for key derivation
-
-### Key Derivation: PBKDF2
-- **Hash**: SHA-256
-- **Iterations**: 100,000
-- **Purpose**: Derives encryption key from user password
-
-### Storage Format
-Encrypted data is stored as base64-encoded JSON:
-```json
-{
-  "encrypted": "<base64-encoded-ciphertext>",
-  "keyInfo": {
-    "salt": "<base64-encoded-salt>",
-    "iv": "<base64-encoded-iv>"
-  }
-}
-```
-
-## Usage Examples
-
-### Initialize Database
-```typescript
-import { getDatabase } from './services/Database';
-
-const db = getDatabase();
-await db.init();
-```
-
-### Log Analytics Message
-```typescript
-import { getAnalyticsService } from './services/AnalyticsService';
-
-const analytics = getAnalyticsService();
-await analytics.logMessage(
-  'project-123',
-  'User question',
-  'LLM response',
-  1500,  // tokens
-  'claude-sonnet-4-5'
-);
-```
-
-### Save Encrypted Settings
-```typescript
-import { getSettingsService } from './services/SettingsService';
-
-const settings = getSettingsService();
-await settings.addLLMConfig({
-  id: 'anthropic-1',
+// Initialize LLM service
+initializeLLMService({
   provider: 'anthropic',
-  modelName: 'claude-sonnet-4-5-20250929',
-  apiKey: 'sk-ant-...',
-  isDefault: true
-}, 'user-password');
+  model: 'claude-sonnet-4-5-20250929',
+  apiKey: process.env.ANTHROPIC_API_KEY || '',
+  maxTokens: 4096,
+  temperature: 0.7
+});
+
+// Configure orchestrator
+const config: OrchestratorConfig = {
+  projectRoot: process.cwd(),
+  autoProgress: false,
+  requireApprovalPerPhase: true,
+  phaseTimeout: 300000
+};
+
+// Create and initialize orchestrator
+const orchestrator = new AgentOrchestrator(config);
+await orchestrator.initialize();
+
+// Start workflow
+await orchestrator.start();
 ```
 
-### Manage Projects
-```typescript
-import { getProjectService } from './services/ProjectService';
+### Event Handling
 
-const projects = getProjectService();
-const project = await projects.createProject(
-  'My New Project',
-  'A description',
-  ['tag1', 'tag2']
+```typescript
+orchestrator.on('phase-started', ({ phase, agent }) => {
+  console.log(`Phase ${phase} started with ${agent}`);
+});
+
+orchestrator.on('phase-completed', ({ phase }) => {
+  console.log(`Phase ${phase} completed`);
+});
+
+orchestrator.on('approval-required', ({ phase, deliverables }) => {
+  // Handle approval request
+});
+```
+
+### Manual Phase Control
+
+```typescript
+// Get current state
+const state = orchestrator.getWorkflowState();
+
+// Approve a phase
+await orchestrator.approvePhase(
+  WorkflowPhase.SPECIFICATION,
+  ['docs/plans/spec.md'],
+  'Looks good!'
+);
+
+// Reject a phase
+await orchestrator.rejectPhase(
+  WorkflowPhase.SPECIFICATION,
+  ['docs/plans/spec.md'],
+  'Needs more detail'
 );
 ```
 
-## Security Considerations
+## Integration with Existing Agents
 
-1. **Client-Side Only**: All encryption happens in the browser
-2. **No Server Storage**: Data never transmitted to servers
-3. **Password Protection**: Required for accessing encrypted settings
-4. **Secure Defaults**: Strong encryption algorithms and parameters
-5. **No Plaintext Storage**: API keys never stored unencrypted
+The system integrates with agent definitions in `/agents/`:
 
-## Browser Compatibility
-
-Requires modern browsers with support for:
-- IndexedDB API
-- Web Crypto API (SubtleCrypto)
-- ES6+ JavaScript features
-- TypeScript (for development)
-
-**Tested on:**
-- Chrome 90+
-- Firefox 88+
-- Safari 14+
-- Edge 90+
-
-## Future Enhancements
-
-1. **Data Sync**: Cloud backup with end-to-end encryption
-2. **Export Formats**: CSV, Excel export options
-3. **Advanced Analytics**: Charts and graphs
-4. **Settings Import**: Import configurations from file
-5. **Multi-Device**: Encrypted sync across devices
-6. **Backup/Restore**: Complete database backup functionality
+- `spec-agent.md` - Specification development
+- `icp-agent.md` - Customer profile and personas
+- `arch-design-agent.md` - Architecture design
+- `uiux-design-agent.md` - UI/UX design
+- `prd-agent.md` - PRD and implementation planning
+- `swarm-planning-agent.md` - Parallel task planning
+- `coding-agent.md` - Code implementation
+- `reviewer-agent.md` - Code review
+- `testing-agent.md` - Testing
+- `security-agent.md` - Security assessment
+- `performance-agent.md` - Performance optimization
+- `deployment-agent.md` - Deployment
+- `documentation-agent.md` - Documentation
 
 ## File Structure
 
 ```
 src/
-├── services/
-│   ├── Database.ts           # IndexedDB wrapper
-│   ├── AnalyticsService.ts   # Message analytics
-│   ├── SettingsService.ts    # Encrypted settings
-│   ├── ProjectService.ts     # Project management
-│   └── index.ts              # Service exports
-├── components/
-│   ├── SettingsPage.tsx      # Settings UI
-│   ├── AnalyticsPage.tsx     # Analytics UI
-│   └── index.ts              # Component exports
 ├── types/
-│   ├── models.ts             # Data models
-│   └── index.ts              # Type exports
+│   └── index.ts              # TypeScript interfaces and types
+├── services/
+│   ├── AgentRegistry.ts      # Agent registry service
+│   ├── AgentCommunication.ts # Message passing service
+│   ├── WorkflowManager.ts    # Workflow state machine
+│   ├── ProgressTracker.ts    # Progress tracking service
+│   ├── AgentOrchestrator.ts  # Main orchestrator
+│   ├── LLMService.ts         # LLM integration
+│   └── index.ts              # Service exports
+├── examples/
+│   └── orchestrator-usage.ts # Usage examples
 └── README.md                 # This file
 ```
 
+## Commands
+
+### /bootstrap
+
+Initialize a new CCIDE project:
+
+```
+/bootstrap
+```
+
+This command:
+1. Creates project structure (docs/, pages/, components/, .ccide/)
+2. Initializes workflow state
+3. Creates workplan and progress files
+4. Starts the orchestrator in Discovery phase
+
+## State Persistence
+
+The orchestrator persists state in two ways:
+
+1. **JSON State File** (`.ccide/state.json`)
+   - Complete workflow state
+   - Machine-readable format
+   - Used for resuming sessions
+
+2. **Markdown Progress File** (`docs/plans/progress.md`)
+   - Human-readable progress report
+   - Current phase and completed phases
+   - Deliverables by phase
+   - Active blockers
+   - Approval history
+
+## Error Handling
+
+The orchestrator provides robust error handling:
+
+- **Agent Errors**: Captured and recorded as blockers
+- **Phase Validation**: Ensures dependencies are satisfied
+- **Deliverable Validation**: Checks for required deliverables
+- **State Recovery**: Can resume from persisted state
+
+## Events
+
+The orchestrator emits the following events:
+
+- `initialized` - Orchestrator initialized
+- `workflow-started` - Workflow started
+- `phase-started` - New phase started
+- `phase-completed` - Phase completed
+- `approval-required` - User approval needed
+- `approval-requested` - Agent requested approval
+- `phase-approved` - Phase approved by user
+- `phase-rejected` - Phase rejected by user
+- `progress-update` - Agent progress update
+- `agent-error` - Agent encountered error
+- `agent-failed` - Agent failed to complete
+- `workflow-completed` - All phases complete
+- `workflow-error` - Workflow error occurred
+- `stopped` - Orchestrator stopped
+- `reset` - Orchestrator reset
+
+## Best Practices
+
+1. **Always initialize LLM service before orchestrator**
+2. **Set up event listeners before starting workflow**
+3. **Persist state regularly** (automatically handled)
+4. **Handle approval events appropriately**
+5. **Monitor agent errors and blockers**
+6. **Use type definitions** for type safety
+7. **Follow the phase sequence** - don't skip phases
+
+## Future Enhancements
+
+- [ ] Web UI for orchestrator control
+- [ ] Real-time collaboration support
+- [ ] Agent hot-reloading
+- [ ] Advanced scheduling algorithms
+- [ ] Parallel agent execution
+- [ ] Rollback and replay capabilities
+- [ ] Enhanced metrics and analytics
+- [ ] Plugin system for custom agents
+
 ## License
 
-Part of the CCIDE project. See project root for license information.
+See main project LICENSE file.
