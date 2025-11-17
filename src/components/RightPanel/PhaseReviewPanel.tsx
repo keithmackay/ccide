@@ -88,85 +88,89 @@ export const PhaseReviewPanel: React.FC = () => {
   };
 
   return (
-    <div className="flex-1 overflow-auto bg-gray-900 p-6">
-      <div className="max-w-4xl mx-auto space-y-6">
-        {/* Phase Completion Header */}
-        <div className="bg-gradient-to-r from-green-900/30 to-blue-900/30 border border-green-700/30 rounded-lg p-6">
-          <div className="flex items-start gap-4">
-            <CheckCircle className="w-8 h-8 text-green-400 flex-shrink-0 mt-1" />
-            <div className="flex-1">
-              <h2 className="text-2xl font-bold text-green-400 mb-2">
-                Phase Completed!
-              </h2>
-              <p className="text-lg text-gray-300 mb-1">{phaseName}</p>
-              {currentPhase.completionMessage && (
-                <p className="text-sm text-gray-400 mt-3">
-                  {currentPhase.completionMessage}
-                </p>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Deliverables Section */}
-        <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
-          <h3 className="text-lg font-semibold text-gray-200 mb-4 flex items-center gap-2">
-            <FileText className="w-5 h-5" />
-            Phase Deliverables ({currentPhase.deliverables.length})
-          </h3>
-
-          <div className="space-y-3">
-            {currentPhase.deliverables.length === 0 ? (
-              <p className="text-sm text-gray-500 italic">
-                No deliverables specified for this phase.
+    <div className="flex flex-col h-full bg-gray-900">
+      {/* Compact Header - Fixed at top */}
+      <div className="flex-shrink-0 bg-gradient-to-r from-green-900/30 to-blue-900/30 border-b border-green-700/30 p-4">
+        <div className="flex items-center gap-3">
+          <CheckCircle className="w-6 h-6 text-green-400 flex-shrink-0" />
+          <div className="flex-1">
+            <h2 className="text-lg font-bold text-green-400">
+              Phase Completed: {phaseName}
+            </h2>
+            {currentPhase.completionMessage && (
+              <p className="text-xs text-gray-400 mt-1 line-clamp-2">
+                {currentPhase.completionMessage}
               </p>
-            ) : (
-              currentPhase.deliverables.map((deliverable, index) => (
-                <div
-                  key={index}
-                  className="bg-gray-750 border border-gray-700 rounded-lg overflow-hidden"
-                >
-                  <button
-                    onClick={() => handleDeliverableClick(deliverable)}
-                    className="w-full flex items-center gap-3 p-4 hover:bg-gray-700 transition-colors text-left"
-                  >
-                    <DeliverableIcon type={deliverable.type} />
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-gray-200">
-                        {deliverable.name}
-                      </p>
-                      <p className="text-xs text-gray-500 mt-0.5">
-                        {deliverable.path}
-                      </p>
-                    </div>
-                    {expandedDeliverable === deliverable.path ? (
-                      <ChevronDown className="w-5 h-5 text-gray-400" />
-                    ) : (
-                      <ChevronRight className="w-5 h-5 text-gray-400" />
-                    )}
-                  </button>
-
-                  {expandedDeliverable === deliverable.path && deliverable.preview && (
-                    <div className="border-t border-gray-700 p-4 bg-gray-800">
-                      <pre className="text-xs text-gray-300 whitespace-pre-wrap font-mono max-h-96 overflow-y-auto">
-                        {deliverable.preview}
-                      </pre>
-                    </div>
-                  )}
-                </div>
-              ))
             )}
           </div>
         </div>
+      </div>
 
-        {/* Review Instructions */}
-        <div className="bg-blue-900/20 border border-blue-700/30 rounded-lg p-4">
-          <p className="text-sm text-gray-300">
-            <span className="font-semibold text-blue-400">Review the deliverables above.</span>{' '}
-            You can expand each item to see a preview. When you're ready, either continue to the
-            next phase or provide feedback for improvements.
-          </p>
-        </div>
+      {/* Main Content Area - Scrollable */}
+      <div className="flex-1 overflow-y-auto p-6">
+        <div className="space-y-4">
+          {/* Deliverables Section - Full Width */}
+          <div className="bg-gray-800 border border-gray-700 rounded-lg">
+            <div className="p-4 border-b border-gray-700">
+              <h3 className="text-base font-semibold text-gray-200 flex items-center gap-2">
+                <FileText className="w-4 h-4" />
+                Phase Deliverables ({currentPhase.deliverables.length})
+              </h3>
+            </div>
+
+            <div className="p-4 space-y-3">
+              {currentPhase.deliverables.length === 0 ? (
+                <p className="text-sm text-gray-500 italic">
+                  No deliverables specified for this phase.
+                </p>
+              ) : (
+                currentPhase.deliverables.map((deliverable, index) => (
+                  <div
+                    key={index}
+                    className="border border-gray-700 rounded-lg overflow-hidden"
+                  >
+                    <button
+                      onClick={() => handleDeliverableClick(deliverable)}
+                      className="w-full flex items-center gap-3 p-3 hover:bg-gray-700 transition-colors text-left bg-gray-750"
+                    >
+                      <DeliverableIcon type={deliverable.type} />
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-gray-200">
+                          {deliverable.name}
+                        </p>
+                        <p className="text-xs text-gray-500 mt-0.5">
+                          {deliverable.path}
+                        </p>
+                      </div>
+                      {expandedDeliverable === deliverable.path ? (
+                        <ChevronDown className="w-5 h-5 text-gray-400" />
+                      ) : (
+                        <ChevronRight className="w-5 h-5 text-gray-400" />
+                      )}
+                    </button>
+
+                    {expandedDeliverable === deliverable.path && deliverable.preview && (
+                      <div className="border-t border-gray-700 bg-gray-900">
+                        <div className="p-4 max-h-[70vh] overflow-y-auto">
+                          <pre className="text-sm text-gray-300 whitespace-pre-wrap font-mono">
+                            {deliverable.preview}
+                          </pre>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* Compact Review Instructions */}
+          <div className="bg-blue-900/20 border border-blue-700/30 rounded-lg p-3">
+            <p className="text-xs text-gray-300">
+              <span className="font-semibold text-blue-400">Review deliverables above.</span>{' '}
+              Expand items to see previews, then provide feedback or continue.
+            </p>
+          </div>
 
         {/* Feedback Section */}
         <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
