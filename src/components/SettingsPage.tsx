@@ -6,6 +6,7 @@
 import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { getSettingsService } from '../services/SettingsService';
+import { getAccountService } from '../services/AccountService';
 import { StoredLLMConfig, Settings } from '../types/models';
 import { useAppStore } from '../stores/appStore';
 import { usePasswordSession } from '../hooks/usePasswordSession';
@@ -52,6 +53,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onClose }) => {
   const [availableModels, setLocalAvailableModels] = useState<{ id: string; name: string }[]>([]);
 
   const settingsService = getSettingsService();
+  const accountService = getAccountService();
   const setAppAvailableModels = useAppStore((state) => (state as any).setAvailableModels);
   const setSelectedModel = useAppStore((state) => state.setSelectedModel);
   const { setPassword: setSessionPassword } = usePasswordSession();
@@ -214,6 +216,18 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onClose }) => {
     }
   };
 
+  const handleChangePassword = () => {
+    // TODO: Implement change password dialog
+    alert('Change password dialog will be implemented in future enhancement');
+  };
+
+  const handleDeleteAccount = () => {
+    // TODO: Implement delete account dialog
+    if (confirm('Are you sure you want to delete your account? This will remove all data permanently.')) {
+      alert('Delete account dialog will be implemented in future enhancement');
+    }
+  };
+
   const renderAccountSection = () => (
     <div className="settings-section">
       <h2 className="text-gray-100 text-xl font-semibold mb-4">Account Settings</h2>
@@ -253,23 +267,22 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onClose }) => {
       )}
 
       {isUnlocked && (
-        <div className="account-info bg-gray-800 p-4 rounded-lg border border-gray-700">
-          <h3 className="text-gray-200 text-lg font-medium mb-2">Account Information</h3>
-          <p className="text-gray-300 mb-4">Settings are encrypted and stored locally in your browser.</p>
-          <button
-            onClick={async () => {
-              const exported = await settingsService.exportSettings();
-              const blob = new Blob([exported], { type: 'application/json' });
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement('a');
-              a.href = url;
-              a.download = 'ccide-settings.json';
-              a.click();
-            }}
-            className="btn btn-secondary"
-          >
-            Export Settings
-          </button>
+        <div className="account-actions bg-gray-800 p-4 rounded-lg border border-gray-700">
+          <h3 className="text-gray-200 text-lg font-medium mb-4">Account Management</h3>
+          <div className="flex flex-col gap-3">
+            <button
+              onClick={handleChangePassword}
+              className="btn btn-primary"
+            >
+              Change Password
+            </button>
+            <button
+              onClick={handleDeleteAccount}
+              className="btn btn-danger"
+            >
+              Delete Account
+            </button>
+          </div>
         </div>
       )}
     </div>
