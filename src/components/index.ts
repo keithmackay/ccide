@@ -4,3 +4,5 @@
 
 export { SettingsPage } from './SettingsPage';
 export { AnalyticsPage } from './AnalyticsPage';
+export { PasswordDialog } from './common/PasswordDialog';
+export { SecurityStatus, SecurityStatusBadge } from './common/SecurityStatus';
