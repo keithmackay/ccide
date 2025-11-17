@@ -12,6 +12,8 @@ export const ConversationView: React.FC = () => {
   const addMessage = useAppStore((state) => state.addMessage);
   const updateMessage = useAppStore((state) => state.updateMessage);
   const activeProject = useAppStore((state) => state.activeProject);
+  const setActiveProject = useAppStore((state) => state.setActiveProject);
+  const addProject = useAppStore((state) => state.addProject);
 
   const { isSessionExpired, refreshSession, setPassword } = usePasswordSession();
 
@@ -22,6 +24,23 @@ export const ConversationView: React.FC = () => {
   const [pendingPrompt, setPendingPrompt] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const streamingRef = useRef(false);
+
+  // Auto-create default project if none exists
+  useEffect(() => {
+    if (!activeProject) {
+      const defaultProject = {
+        id: 'default-project',
+        name: 'Default Project',
+        description: 'Default project for conversations',
+        createdAt: Date.now(),
+        lastModified: Date.now(),
+        isArchived: false,
+      };
+      addProject(defaultProject);
+      setActiveProject(defaultProject);
+      console.log('[ConversationView] Created default project');
+    }
+  }, [activeProject, addProject, setActiveProject]);
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
