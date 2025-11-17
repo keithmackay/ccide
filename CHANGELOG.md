@@ -7,25 +7,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
-- Comprehensive test suite with 80%+ coverage
-- Unit tests for data models and type definitions
-- Integration tests for database operations
-- E2E tests for critical user flows
-- Test fixtures and mocks for services
+## [0.2.0] - 2024-11-17
+
+### Added - LLM Conversation Features
+- **LLM Service Integration**: Full support for Anthropic Claude and OpenAI GPT APIs
+- **Conversation Interface**: Interactive chat UI with message history and streaming responses
+- **ConversationService**: Message persistence, search, and export functionality
+- **Password Session Management**: Secure password handling with auto-expiration
+- **Token Counting**: Automatic token estimation and usage tracking
+- **Conversation Analytics**: Statistics, search, and export (JSON/Markdown)
+
+### Added - Testing & Quality
+- Comprehensive test suite with 91.5%+ test pass rate (162/177 tests passing)
+- Unit tests for ConversationView, ConversationService, LLMService, usePasswordSession
+- Integration tests for complete conversation flow
+- Test fixtures and mocks for IndexedDB and fetch API
 - Performance optimization configurations
 - ESLint and Prettier configurations
 - Code review checklist
 - Comprehensive documentation (README, CONTRIBUTING, LICENSE)
 
 ### Changed
-- Enhanced project structure with testing infrastructure
+- Enhanced project structure with conversation features
 - Improved code quality standards
 - Updated TypeScript configuration for strict type checking
+- Added LLM configuration to README
 
 ### Security
+- AES-256 encryption for API keys using Web Crypto API
+- Password-protected settings with PBKDF2 key derivation
+- Secure session management with auto-timeout
+- No server-side storage - all data encrypted client-side
 - Added security review guidelines
 - Implemented security-focused ESLint rules
+
+### Fixed
+- TypeScript strict mode compatibility improvements
+- Browser compatibility for Web Crypto API
+- IndexedDB initialization issues
 
 ## [0.1.0] - 2024-11-16
 
