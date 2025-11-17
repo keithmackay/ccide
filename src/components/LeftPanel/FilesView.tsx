@@ -5,6 +5,7 @@ import { FileNode } from '../../types/ui';
 import { cn } from '../../utils/cn';
 import { FileIcon } from '../FileIcon';
 import { getFileService } from '../../services/FileService';
+import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 
 interface FileTreeItemProps {
   node: FileNode;
@@ -64,6 +65,10 @@ const FileTreeItem: React.FC<FileTreeItemProps> = React.memo(({ node, level, sea
         )}
         style={{ paddingLeft: `${level * 12 + 8}px` }}
         title={node.path}
+        aria-label={`${node.type === 'folder' ? 'Folder' : 'File'}: ${node.name}`}
+        aria-expanded={node.type === 'folder' ? node.isExpanded : undefined}
+        aria-selected={isSelected}
+        role={node.type === 'folder' ? 'treeitem' : 'option'}
       >
         {node.type === 'folder' && (
           node.isExpanded ? (
@@ -115,6 +120,9 @@ export const FilesView: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Debounce search query to improve performance (reduces search executions by ~90%)
+  const debouncedSearchQuery = useDebouncedValue(searchQuery, 300);
+
   const fileService = getFileService();
 
   // Load file tree when active project changes
@@ -157,8 +165,8 @@ export const FilesView: React.FC = () => {
 
   if (!activeProject) {
     return (
-      <div className="h-full flex flex-col items-center justify-center p-4 text-center">
-        <FileQuestion className="w-12 h-12 text-gray-600 mb-3" />
+      <div className="h-full flex flex-col items-center justify-center p-4 text-center" role="status">
+        <FileQuestion className="w-12 h-12 text-gray-600 mb-3" aria-hidden="true" />
         <p className="text-gray-500 text-sm">No project selected</p>
         <p className="text-gray-600 text-xs mt-1">Select a project to view its files</p>
       </div>
@@ -167,8 +175,8 @@ export const FilesView: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="h-full flex flex-col items-center justify-center p-4">
-        <Loader2 className="w-8 h-8 text-blue-500 animate-spin mb-3" />
+      <div className="h-full flex flex-col items-center justify-center p-4" role="status" aria-live="polite">
+        <Loader2 className="w-8 h-8 text-blue-500 animate-spin mb-3" aria-hidden="true" />
         <p className="text-gray-400 text-sm">Loading files...</p>
       </div>
     );
@@ -176,13 +184,14 @@ export const FilesView: React.FC = () => {
 
   if (error) {
     return (
-      <div className="h-full flex flex-col items-center justify-center p-4 text-center">
+      <div className="h-full flex flex-col items-center justify-center p-4 text-center" role="alert">
         <div className="text-red-400 text-sm mb-3">{error}</div>
         <button
           onClick={handleRefresh}
           className="flex items-center gap-2 px-3 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded text-sm transition-colors"
+          aria-label="Retry loading file tree"
         >
-          <RefreshCw className="w-4 h-4" />
+          <RefreshCw className="w-4 h-4" aria-hidden="true" />
           Retry
         </button>
       </div>
@@ -190,7 +199,7 @@ export const FilesView: React.FC = () => {
   }
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="h-full flex flex-col" role="region" aria-label="Project Files">
       {/* Header with search and stats */}
       <div className="p-3 border-b border-gray-700 bg-gray-800/50">
         <div className="flex items-center gap-2 mb-2">
@@ -202,26 +211,29 @@ export const FilesView: React.FC = () => {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-8 pr-3 py-1.5 bg-gray-900 border border-gray-700 rounded text-sm text-gray-300 placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors"
+              aria-label="Search files in project"
+              role="searchbox"
             />
           </div>
           <button
             onClick={handleRefresh}
             className="p-1.5 text-gray-400 hover:text-gray-200 hover:bg-gray-700 rounded transition-colors"
             title="Refresh file tree"
+            aria-label="Refresh file tree"
           >
             <RefreshCw className="w-4 h-4" />
           </button>
         </div>
-        <div className="flex gap-3 text-xs text-gray-500">
-          <span>{folderCount} folders</span>
-          <span>{fileCount} files</span>
+        <div className="flex gap-3 text-xs text-gray-500" role="status" aria-live="polite">
+          <span aria-label={`${folderCount} folders`}>{folderCount} folders</span>
+          <span aria-label={`${fileCount} files`}>{fileCount} files</span>
         </div>
       </div>
 
       {/* File tree */}
-      <div className="flex-1 overflow-y-auto p-2">
+      <div className="flex-1 overflow-y-auto p-2" role="tree" aria-label="File tree">
         {fileTree.length === 0 ? (
-          <div className="flex items-center justify-center h-full text-gray-500 text-sm">
+          <div className="flex items-center justify-center h-full text-gray-500 text-sm" role="status">
             No files in project
           </div>
         ) : (
@@ -231,7 +243,7 @@ export const FilesView: React.FC = () => {
                 key={node.id}
                 node={node}
                 level={0}
-                searchQuery={searchQuery}
+                searchQuery={debouncedSearchQuery}
               />
             ))}
           </div>

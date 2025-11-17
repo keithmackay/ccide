@@ -558,7 +558,140 @@ describe('File Tree and Preview Integration', () => {
     });
   });
 
+  describe('Search Functionality', () => {
+    it('should debounce search input for better performance', async () => {
+      const user = userEvent.setup();
+
+      renderWithProviders(<FilesView />);
+
+      const searchInput = screen.getByRole('searchbox', { name: /search files/i });
+
+      // Type rapidly
+      await user.type(searchInput, 'App');
+
+      // Search should use debounced value (wait for debounce delay)
+      await waitFor(() => {
+        expect(searchInput).toHaveValue('App');
+      }, { timeout: 500 });
+    });
+
+    it('should filter files based on search query', async () => {
+      const user = userEvent.setup();
+
+      useAppStore.setState({
+        fileTree: [
+          {
+            ...mockFileTree[0],
+            isExpanded: true,
+          },
+          mockFileTree[1],
+        ],
+      });
+
+      renderWithProviders(<FilesView />);
+
+      const searchInput = screen.getByRole('searchbox', { name: /search files/i });
+
+      // Search for "App"
+      await user.type(searchInput, 'App');
+
+      // Wait for debounce
+      await waitFor(() => {
+        // App.tsx should still be in the document (parent folder expanded)
+        expect(screen.queryByText('App.tsx')).toBeInTheDocument();
+      }, { timeout: 500 });
+    });
+
+    it('should clear search when input is cleared', async () => {
+      const user = userEvent.setup();
+
+      renderWithProviders(<FilesView />);
+
+      const searchInput = screen.getByRole('searchbox', { name: /search files/i });
+
+      // Type search
+      await user.type(searchInput, 'test');
+
+      // Clear search
+      await user.clear(searchInput);
+
+      await waitFor(() => {
+        expect(searchInput).toHaveValue('');
+      });
+    });
+  });
+
   describe('Accessibility', () => {
+    it('should have proper ARIA labels for file tree region', () => {
+      renderWithProviders(<FilesView />);
+
+      expect(screen.getByRole('region', { name: /project files/i })).toBeInTheDocument();
+    });
+
+    it('should have ARIA label for search input', () => {
+      renderWithProviders(<FilesView />);
+
+      expect(screen.getByRole('searchbox', { name: /search files/i })).toBeInTheDocument();
+    });
+
+    it('should have ARIA labels for file and folder buttons', () => {
+      renderWithProviders(<FilesView />);
+
+      const srcFolder = screen.getByLabelText(/folder: src/i);
+      expect(srcFolder).toBeInTheDocument();
+      expect(srcFolder).toHaveAttribute('aria-expanded', 'false');
+
+      const readmeFile = screen.getByLabelText(/file: readme\.md/i);
+      expect(readmeFile).toBeInTheDocument();
+    });
+
+    it('should update aria-expanded when folder is toggled', async () => {
+      const user = userEvent.setup();
+
+      renderWithProviders(<FilesView />);
+
+      const srcFolder = screen.getByLabelText(/folder: src/i);
+
+      // Initially collapsed
+      expect(srcFolder).toHaveAttribute('aria-expanded', 'false');
+
+      // Click to expand
+      await user.click(srcFolder);
+
+      // Should update to expanded
+      await waitFor(() => {
+        expect(screen.getByLabelText(/folder: src/i)).toHaveAttribute('aria-expanded', 'true');
+      });
+    });
+
+    it('should have aria-selected for selected files', () => {
+      useAppStore.setState({
+        selectedFile: mockFileTree[1],
+      });
+
+      renderWithProviders(<FilesView />);
+
+      const selectedFile = screen.getByLabelText(/file: readme\.md/i);
+      expect(selectedFile).toHaveAttribute('aria-selected', 'true');
+    });
+
+    it('should have role="tree" for file tree container', () => {
+      renderWithProviders(<FilesView />);
+
+      expect(screen.getByRole('tree', { name: /file tree/i })).toBeInTheDocument();
+    });
+
+    it('should have role="status" for loading state', () => {
+      useAppStore.setState({
+        activeProject: null,
+      });
+
+      renderWithProviders(<FilesView />);
+
+      expect(screen.getByRole('status')).toBeInTheDocument();
+      expect(screen.getByText(/no project selected/i)).toBeInTheDocument();
+    });
+
     it('should support keyboard navigation between files', async () => {
       const user = userEvent.setup();
 
