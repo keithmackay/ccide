@@ -242,6 +242,14 @@ export class SettingsService {
   }
 
   /**
+   * Save all LLM configurations (bulk update)
+   * Used for changing default model, updating multiple configs at once
+   */
+  async saveLLMConfigs(configs: StoredLLMConfig[], password?: string): Promise<void> {
+    await this.saveSettings({ llmConfigs: configs }, password);
+  }
+
+  /**
    * Get all LLM configurations
    */
   async getLLMConfigs(password?: string): Promise<StoredLLMConfig[]> {
