@@ -1,9 +1,12 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { LeftPanel } from './components/LeftPanel/LeftPanel';
 import { RightPanel } from './components/RightPanel/RightPanel';
+import { LoginScreen } from './components/Auth/LoginScreen';
+import { AccountSetup } from './components/Auth/AccountSetup';
 import { useAppStore } from './stores/appStore';
 import { cn } from './utils/cn';
 import { getSettingsService } from './services/SettingsService';
+import { getAccountService } from './services/AccountService';
 import { LLMModel } from './types/ui';
 import { usePasswordSession } from './hooks/usePasswordSession';
 import { getDefaultModelConfig } from './services/SettingsHelper';
@@ -14,7 +17,49 @@ export const App: React.FC = () => {
   const isLeftPanelVisible = useAppStore((state) => state.isLeftPanelVisible);
   const setAvailableModels = useAppStore((state) => (state as any).setAvailableModels);
   const setSelectedModel = useAppStore((state) => state.setSelectedModel);
-  const { password } = usePasswordSession();
+  const { password, setPassword } = usePasswordSession();
+
+  // Authentication state
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [showSetup, setShowSetup] = useState(false);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+
+  // Check authentication status on mount
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const accountService = getAccountService();
+        const accountExists = await accountService.accountExists();
+
+        if (!accountExists) {
+          // No account exists, show setup screen
+          setShowSetup(true);
+          setIsCheckingAuth(false);
+        } else {
+          // Account exists, require login
+          setIsCheckingAuth(false);
+        }
+      } catch (error) {
+        console.error('Failed to check auth status:', error);
+        setIsCheckingAuth(false);
+      }
+    };
+
+    checkAuth();
+  }, []);
+
+  // Handle successful login
+  const handleLoginSuccess = (loginPassword: string) => {
+    setPassword(loginPassword, true);
+    setIsAuthenticated(true);
+  };
+
+  // Handle account setup completion
+  const handleSetupComplete = (setupPassword: string) => {
+    setPassword(setupPassword, true);
+    setIsAuthenticated(true);
+    setShowSetup(false);
+  };
 
   // Load saved models on app initialization
   useEffect(() => {
@@ -99,6 +144,34 @@ export const App: React.FC = () => {
     initLLMService();
   }, [password]);
 
+  // Show loading screen while checking authentication
+  if (isCheckingAuth) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-900">
+        <div className="text-center">
+          <div className="inline-block w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+          <p className="text-gray-400">Loading CCIDE...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show account setup screen for first-time users
+  if (showSetup) {
+    return <AccountSetup onSetupComplete={handleSetupComplete} />;
+  }
+
+  // Show login screen if not authenticated
+  if (!isAuthenticated) {
+    return (
+      <LoginScreen
+        onLoginSuccess={handleLoginSuccess}
+        onNeedSetup={() => setShowSetup(true)}
+      />
+    );
+  }
+
+  // Main application (only shown when authenticated)
   return (
     <div className="flex h-screen w-screen bg-gray-900 text-gray-100 overflow-hidden">
       {/* Left Panel - 1/3 width when visible */}

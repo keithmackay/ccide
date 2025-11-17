@@ -6,10 +6,11 @@
 import { Message, Settings, Project } from '../types/models';
 
 const DB_NAME = 'ccide_db';
-const DB_VERSION = 1;
+const DB_VERSION = 2; // Incremented for accounts store
 
 // Object store names
 export const STORES = {
+  ACCOUNTS: 'accounts',
   MESSAGES: 'messages',
   SETTINGS: 'settings',
   PROJECTS: 'projects',
@@ -41,6 +42,13 @@ export class Database {
 
       request.onupgradeneeded = (event) => {
         const db = (event.target as IDBOpenDBRequest).result;
+
+        // Accounts store for user authentication
+        if (!db.objectStoreNames.contains(STORES.ACCOUNTS)) {
+          db.createObjectStore(STORES.ACCOUNTS, {
+            keyPath: 'id',
+          });
+        }
 
         // Messages store for analytics
         if (!db.objectStoreNames.contains(STORES.MESSAGES)) {
