@@ -83,31 +83,50 @@ export class ClaudeLLMService implements ILLMService {
    */
   async *streamRequest(request: LLMRequest): AsyncGenerator<string> {
     console.log('[ClaudeLLMService] Streaming request to Claude API...');
+    console.log('[ClaudeLLMService] Model:', this.config.model || 'claude-sonnet-4-5-20250929');
+    console.log('[ClaudeLLMService] Endpoint:', this.apiEndpoint);
+    console.log('[ClaudeLLMService] Messages:', request.messages.length);
+    console.log('[ClaudeLLMService] API key present:', !!this.config.apiKey);
+    console.log('[ClaudeLLMService] API key length:', this.config.apiKey?.length || 0);
 
-    const response = await fetch(this.apiEndpoint, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': this.config.apiKey,
-        'anthropic-version': '2023-06-01'
-      },
-      body: JSON.stringify({
-        model: this.config.model || 'claude-sonnet-4-5-20250929',
-        max_tokens: request.maxTokens || this.config.maxTokens || 4096,
-        temperature: request.temperature ?? this.config.temperature ?? 0.7,
-        system: request.systemPrompt,
-        messages: request.messages.map(msg => ({
-          role: msg.role === 'user' ? 'user' : 'assistant',
-          content: msg.content
-        })),
-        stream: true,
-        ...request.options
-      })
-    });
+    const requestBody = {
+      model: this.config.model || 'claude-sonnet-4-5-20250929',
+      max_tokens: request.maxTokens || this.config.maxTokens || 4096,
+      temperature: request.temperature ?? this.config.temperature ?? 0.7,
+      system: request.systemPrompt,
+      messages: request.messages.map(msg => ({
+        role: msg.role === 'user' ? 'user' : 'assistant',
+        content: msg.content
+      })),
+      stream: true,
+      ...request.options
+    };
+
+    console.log('[ClaudeLLMService] Request body:', JSON.stringify(requestBody, null, 2));
+
+    let response;
+    try {
+      response = await fetch(this.apiEndpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': this.config.apiKey,
+          'anthropic-version': '2023-06-01'
+        },
+        body: JSON.stringify(requestBody)
+      });
+
+      console.log('[ClaudeLLMService] Response status:', response.status);
+      console.log('[ClaudeLLMService] Response headers:', Object.fromEntries(response.headers.entries()));
+    } catch (fetchError) {
+      console.error('[ClaudeLLMService] Fetch error:', fetchError);
+      throw new Error(`Network error: ${fetchError instanceof Error ? fetchError.message : 'Unknown fetch error'}`);
+    }
 
     if (!response.ok) {
       const error = await response.text();
-      throw new Error('Claude API error: ' + response.status + ' - ' + error);
+      console.error('[ClaudeLLMService] API error response:', error);
+      throw new Error(`Claude API error: ${response.status} - ${error}`);
     }
 
     const reader = response.body?.getReader();

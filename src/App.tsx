@@ -115,6 +115,8 @@ export const App: React.FC = () => {
       }
 
       try {
+        console.log('[App] Initializing LLM service with password...');
+
         // Get default model config with decrypted API key
         const modelConfig = await getDefaultModelConfig(password);
 
@@ -122,6 +124,15 @@ export const App: React.FC = () => {
           console.log('[App] No default model config found');
           return;
         }
+
+        console.log('[App] Model config retrieved:');
+        console.log('  - Provider:', modelConfig.provider);
+        console.log('  - Model name:', modelConfig.modelName);
+        console.log('  - Endpoint:', modelConfig.endpoint || 'default');
+        console.log('  - API key present:', !!modelConfig.apiKey);
+        console.log('  - API key length:', modelConfig.apiKey?.length || 0);
+        console.log('  - Max tokens:', modelConfig.maxTokens || 'default');
+        console.log('  - Temperature:', modelConfig.temperature ?? 'default');
 
         // Convert StoredLLMConfig to LLMConfig
         const llmConfig: LLMConfig = {
@@ -135,9 +146,10 @@ export const App: React.FC = () => {
 
         // Initialize the LLM service
         initializeLLMService(llmConfig);
-        console.log('[App] LLM service initialized with model:', modelConfig.modelName);
+        console.log('[App] LLM service initialized successfully with model:', modelConfig.modelName);
       } catch (error) {
         console.error('[App] Failed to initialize LLM service:', error);
+        console.error('[App] Error details:', error instanceof Error ? error.stack : 'No stack trace');
       }
     };
 

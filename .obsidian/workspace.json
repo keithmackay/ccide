@@ -172,6 +172,8 @@
   },
   "active": "826efaf41ec60b6b",
   "lastOpenFiles": [
+    "src/components/LeftPanel/ConversationView.tsx.tmp.30284.1763361570187",
+    "src/components/LeftPanel/ConversationView.tsx.tmp.30284.1763361569886",
     "src/components/LeftPanel/ConversationView.tsx.tmp.30284.1763360416379",
     "src/components/LeftPanel/ConversationView.tsx.tmp.30284.1763360404610",
     "src/components/LeftPanel/ConversationView.tsx.tmp.30284.1763360404334",
@@ -181,8 +183,6 @@
     "src/hooks/usePasswordSession.ts.tmp.30284.1763360334974",
     "src/App.tsx.tmp.30284.1763359849627",
     "src/App.tsx.tmp.30284.1763359849379",
-    "src/App.tsx.tmp.30284.1763359849117",
-    "src/components/Auth/index.ts",
     "PR_DESCRIPTION.md",
     "PASSWORD_MANAGEMENT_INTEGRATION.md",
     "thoughts/shared/handoffs/general/2025-11-16_23-42-52_settings-ui-implementation.md",

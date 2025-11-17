@@ -80,8 +80,9 @@ export const ConversationView: React.FC = () => {
       let llmService;
       try {
         llmService = getLLMService();
+        console.log('[ConversationView] LLM service retrieved successfully');
       } catch (err) {
-        console.warn('LLM service not initialized, using simulated response');
+        console.warn('[ConversationView] LLM service not initialized, using simulated response:', err);
         llmService = null;
       }
 
@@ -99,6 +100,7 @@ export const ConversationView: React.FC = () => {
 
       if (llmService) {
         // Real streaming from LLM service
+        console.log('[ConversationView] Preparing messages for LLM...');
         const projectMessages = messages
           .filter(msg => msg.projectId === activeProject.id)
           .map((msg): LLMMessage => ({
@@ -111,15 +113,18 @@ export const ConversationView: React.FC = () => {
           content: currentInput,
         });
 
+        console.log('[ConversationView] Sending', projectMessages.length, 'messages to LLM');
+
         let accumulatedContent = '';
         let chunkBuffer = '';
         let lastUpdateTime = Date.now();
         const BATCH_INTERVAL = 50; // ms - batch updates for performance
 
-        for await (const chunk of llmService.streamRequest({
-          messages: projectMessages,
-          systemPrompt: 'You are a helpful AI assistant integrated into CCIDE, a code IDE.',
-        })) {
+        try {
+          for await (const chunk of llmService.streamRequest({
+            messages: projectMessages,
+            systemPrompt: 'You are a helpful AI assistant integrated into CCIDE, a code IDE.',
+          })) {
           // Check if streaming was cancelled
           if (!streamingRef.current) {
             break;
@@ -142,11 +147,21 @@ export const ConversationView: React.FC = () => {
               }
             });
           }
-        }
+          }
 
-        // Final update with any remaining content
-        if (chunkBuffer) {
-          updateMessage(assistantMessageId, { content: accumulatedContent });
+          // Final update with any remaining content
+          if (chunkBuffer) {
+            updateMessage(assistantMessageId, { content: accumulatedContent });
+          }
+
+          console.log('[ConversationView] Streaming completed successfully');
+        } catch (streamError) {
+          console.error('[ConversationView] Streaming error:', streamError);
+          // Update the assistant message with the error
+          updateMessage(assistantMessageId, {
+            content: `Error: ${streamError instanceof Error ? streamError.message : 'Failed to stream response from LLM'}`,
+          });
+          throw streamError;
         }
       } else {
         // Simulated streaming response
@@ -176,19 +191,23 @@ export const ConversationView: React.FC = () => {
       }
 
     } catch (err) {
-      console.error('Error streaming message:', err);
+      console.error('[ConversationView] Error streaming message:', err);
+      console.error('[ConversationView] Error stack:', err instanceof Error ? err.stack : 'No stack trace');
 
       const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred';
 
-      // Add error message to chat
-      const errorChatMessage = {
-        id: `msg-${Date.now()}`,
-        role: 'assistant' as const,
-        content: `Error: ${errorMessage}`,
-        timestamp: new Date().toISOString(),
-        projectId: activeProject.id,
-      };
-      addMessage(errorChatMessage);
+      // Error message is already added to the assistant message in the streaming catch block
+      // Only add a new error message if we don't have a streaming message
+      if (!streamingMessageId) {
+        const errorChatMessage = {
+          id: `msg-${Date.now()}`,
+          role: 'assistant' as const,
+          content: `Error: ${errorMessage}\n\nPlease check:\n1. Your API key is correctly configured in Settings\n2. Your internet connection is working\n3. The console for more detailed error information`,
+          timestamp: new Date().toISOString(),
+          projectId: activeProject.id,
+        };
+        addMessage(errorChatMessage);
+      }
     } finally {
       streamingRef.current = false;
       setIsStreaming(false);
