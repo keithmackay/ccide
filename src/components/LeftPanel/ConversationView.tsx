@@ -1,25 +1,20 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Send, StopCircle, AlertCircle } from 'lucide-react';
+import { Send, StopCircle } from 'lucide-react';
 import { useAppStore } from '../../stores/appStore';
 import { cn } from '../../utils/cn';
 import { initializeLLMService, getLLMService } from '../../services/LLMService';
 import { getSettingsService } from '../../services/SettingsService';
-import { getConversationService, estimateTokens } from '../../services/ConversationService';
-import { ErrorMessage, parseError, ErrorMessageConfig } from '../common/ErrorMessage';
+import { parseError, ErrorMessageConfig } from '../common/ErrorMessage';
 import { LLMMessage, LLMConfig } from '../../types/index';
-import { Message as DBMessage } from '../../types/models';
 import { PasswordDialog } from '../common/PasswordDialog';
 import { usePasswordSession, usePasswordWarning } from '../../hooks/usePasswordSession';
 import { validatePassword } from '../../services/SettingsHelper';
-
-const MAX_TOKEN_ESTIMATE = 100000; // Conservative token limit
 
 export const ConversationView: React.FC = () => {
   const messages = useAppStore((state) => state.messages);
   const addMessage = useAppStore((state) => state.addMessage);
   const updateMessage = useAppStore((state) => state.updateMessage);
   const activeProject = useAppStore((state) => state.activeProject);
-  const setRightPanelMode = useAppStore((state) => state.setRightPanelMode);
 
   const [input, setInput] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
@@ -27,12 +22,9 @@ export const ConversationView: React.FC = () => {
   const [showPasswordDialog, setShowPasswordDialog] = useState(false);
   const [passwordError, setPasswordError] = useState('');
   const [error, setError] = useState<ErrorMessageConfig | null>(null);
-  const [currentTokenCount, setCurrentTokenCount] = useState(0);
-  const [totalTokens, setTotalTokens] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const streamingRef = useRef(false);
-  const conversationService = getConversationService();
 
   // Use password session hook for secure password management
   const { password, hasPassword, setPassword, clearPassword } = usePasswordSession();
@@ -52,29 +44,6 @@ export const ConversationView: React.FC = () => {
       scrollToBottom();
     }
   }, [isStreaming, messages, scrollToBottom]);
-
-  // Update token count when input changes
-  useEffect(() => {
-    setCurrentTokenCount(estimateTokens(input));
-  }, [input]);
-
-  // Load conversation history and calculate total tokens on project change
-  useEffect(() => {
-    if (activeProject) {
-      loadConversationHistory();
-    }
-  }, [activeProject?.id]);
-
-  const loadConversationHistory = async () => {
-    if (!activeProject) return;
-
-    try {
-      const stats = await conversationService.getMessageStats(activeProject.id);
-      setTotalTokens(stats.totalTokens);
-    } catch (err) {
-      console.error('Failed to load conversation stats:', err);
-    }
-  };
 
   const handlePasswordSubmit = async (pwd: string, remember: boolean) => {
     const isValid = await validatePassword(pwd);
