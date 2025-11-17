@@ -204,4 +204,21 @@ export const useAppStore = create<AppState>((set) => ({
       console.error('[appStore] Failed to load projects:', error);
     }
   },
+
+  clearAllProjects: async () => {
+    try {
+      const projectService = getProjectService();
+      await projectService.clearAll();
+
+      console.log('[appStore] All projects cleared from database');
+
+      set({
+        activeProjects: [],
+        archivedProjects: [],
+        activeProject: null,
+      });
+    } catch (error) {
+      console.error('[appStore] Failed to clear projects:', error);
+    }
+  },
 }));

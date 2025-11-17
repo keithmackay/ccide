@@ -133,4 +133,5 @@ export interface AppState {
   updatePhaseStatus: (status: PhaseStatus) => void;
   addPhaseDeliverable: (deliverable: PhaseDeliverable) => void;
   loadProjects: () => Promise<void>;
+  clearAllProjects: () => Promise<void>;
 }
