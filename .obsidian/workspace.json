@@ -172,6 +172,8 @@
   },
   "active": "826efaf41ec60b6b",
   "lastOpenFiles": [
+    "src/components/LeftPanel/ConversationView.tsx.tmp.98555.1763374683107",
+    "src/components/LeftPanel/ConversationView.tsx.tmp.98555.1763374673238",
     "src/components/LeftPanel/ConversationView.tsx.tmp.98555.1763373453427",
     "src/App.tsx.tmp.98555.1763373439404",
     "src/stores/appStore.ts.tmp.98555.1763373406518",
@@ -181,8 +183,6 @@
     "src/components/LeftPanel/ConversationView.tsx.tmp.98555.1763372927312",
     "src/components/RightPanel/PhaseReviewPanel.tsx.tmp.98555.1763372912034",
     "src/components/LeftPanel/ConversationView.tsx.tmp.98555.1763372899683",
-    "src/components/LeftPanel/ConversationView.tsx.tmp.98555.1763372888492",
-    "src/utils/phaseDetection.ts",
     "thoughts/shared/handoffs/general/2025-11-17_02-50-35_settings-provider-management.md",
     "docs/user-guide/provider-management.md",
     "docs/reports/agent-5-code-review-report.md",

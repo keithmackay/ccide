@@ -34,6 +34,7 @@ export const ConversationView: React.FC = () => {
   const [showConfigNotice, setShowConfigNotice] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const streamingRef = useRef(false);
+  const lastProcessedMessageIdRef = useRef<string | null>(null);
 
   // Auto-create default project if none exists
   useEffect(() => {
@@ -50,6 +51,9 @@ export const ConversationView: React.FC = () => {
       addProject(defaultProject);
       setActiveProject(defaultProject);
       console.log('[ConversationView] Created default project');
+    } else {
+      // Reset processed message tracker when project changes
+      lastProcessedMessageIdRef.current = null;
     }
   }, [activeProject, addProject, setActiveProject]);
 
@@ -79,6 +83,14 @@ export const ConversationView: React.FC = () => {
     const lastMessage = projectMessages[projectMessages.length - 1];
 
     if (!lastMessage || isStreaming) return;
+
+    // Skip if we've already processed this message
+    if (lastProcessedMessageIdRef.current === lastMessage.id) {
+      return;
+    }
+
+    // Mark this message as processed
+    lastProcessedMessageIdRef.current = lastMessage.id;
 
     // Check for phase completion
     const completedPhase = detectPhaseCompletion(
