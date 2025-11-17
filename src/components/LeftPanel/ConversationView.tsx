@@ -32,6 +32,9 @@ export const ConversationView: React.FC = () => {
   const [showReauthModal, setShowReauthModal] = useState(false);
   const [pendingPrompt, setPendingPrompt] = useState<string | null>(null);
   const [showConfigNotice, setShowConfigNotice] = useState(false);
+  const [commandHistory, setCommandHistory] = useState<string[]>([]);
+  const [historyIndex, setHistoryIndex] = useState<number>(-1);
+  const [temporaryInput, setTemporaryInput] = useState<string>('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const streamingRef = useRef(false);
   const lastProcessedMessageIdRef = useRef<string | null>(null);
@@ -155,6 +158,18 @@ export const ConversationView: React.FC = () => {
   const handleSendWithStreaming = async (promptText?: string) => {
     const messageText = promptText || input;
     if (!messageText.trim() || !activeProject) return;
+
+    // Save to command history (avoid duplicates of the last command)
+    if (!promptText) { // Only save if user typed it (not programmatic)
+      setCommandHistory((prev) => {
+        const newHistory = prev[prev.length - 1] === messageText.trim()
+          ? prev
+          : [...prev, messageText.trim()];
+        return newHistory;
+      });
+      setHistoryIndex(-1);
+      setTemporaryInput('');
+    }
 
     // Check if session is expired
     if (isSessionExpired()) {
@@ -350,6 +365,45 @@ export const ConversationView: React.FC = () => {
     setPendingPrompt(null);
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // Handle arrow key navigation through history
+    if (e.key === 'ArrowUp') {
+      e.preventDefault();
+
+      if (commandHistory.length === 0) return;
+
+      // Save current input when starting to navigate history
+      if (historyIndex === -1) {
+        setTemporaryInput(input);
+      }
+
+      // Move back in history
+      const newIndex = historyIndex === -1
+        ? commandHistory.length - 1
+        : Math.max(0, historyIndex - 1);
+
+      setHistoryIndex(newIndex);
+      setInput(commandHistory[newIndex]);
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault();
+
+      if (historyIndex === -1) return; // Not navigating history
+
+      // Move forward in history
+      const newIndex = historyIndex + 1;
+
+      if (newIndex >= commandHistory.length) {
+        // Reached the end, restore temporary input
+        setHistoryIndex(-1);
+        setInput(temporaryInput);
+        setTemporaryInput('');
+      } else {
+        setHistoryIndex(newIndex);
+        setInput(commandHistory[newIndex]);
+      }
+    }
+  };
+
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -455,8 +509,9 @@ export const ConversationView: React.FC = () => {
           <textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
             onKeyPress={handleKeyPress}
-            placeholder="Type your message..."
+            placeholder="Type your message... (↑/↓ for history)"
             disabled={isStreaming}
             className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none disabled:opacity-50 disabled:cursor-not-allowed"
             rows={3}
