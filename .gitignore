@@ -73,6 +73,9 @@ desktop.ini
 # Optional REPL history
 .node_repl_history
 
+# Git worktrees
+.worktrees/
+
 # Project specific
 projects/*/node_modules
 *.encrypted
