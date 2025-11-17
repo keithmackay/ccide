@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Send, StopCircle } from 'lucide-react';
+import { Send, StopCircle, AlertCircle, Settings } from 'lucide-react';
 import { useAppStore } from '../../stores/appStore';
 import { cn } from '../../utils/cn';
 import { getLLMService } from '../../services/LLMService';
@@ -22,6 +22,7 @@ export const ConversationView: React.FC = () => {
   const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null);
   const [showReauthModal, setShowReauthModal] = useState(false);
   const [pendingPrompt, setPendingPrompt] = useState<string | null>(null);
+  const [showConfigNotice, setShowConfigNotice] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const streamingRef = useRef(false);
 
@@ -100,9 +101,11 @@ export const ConversationView: React.FC = () => {
       try {
         llmService = getLLMService();
         console.log('[ConversationView] LLM service retrieved successfully');
+        setShowConfigNotice(false);
       } catch (err) {
         console.warn('[ConversationView] LLM service not initialized, using simulated response:', err);
         llmService = null;
+        setShowConfigNotice(true);
       }
 
       // Create assistant message for streaming
@@ -268,6 +271,37 @@ export const ConversationView: React.FC = () => {
 
   return (
     <div className="h-full flex flex-col bg-gray-900">
+      {/* Configuration Notice */}
+      {showConfigNotice && (
+        <div className="bg-yellow-900/30 border-b border-yellow-700 p-4">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <h3 className="text-sm font-semibold text-yellow-200 mb-1">
+                LLM Service Not Configured
+              </h3>
+              <p className="text-xs text-yellow-100 mb-2">
+                You're seeing simulated responses. To enable real AI conversations, configure your API keys in Settings.
+              </p>
+              <button
+                onClick={() => useAppStore.setState({ rightPanelMode: 'settings' })}
+                className="inline-flex items-center gap-2 px-3 py-1.5 bg-yellow-600 hover:bg-yellow-700 text-white text-xs rounded transition-colors"
+              >
+                <Settings className="w-3.5 h-3.5" />
+                Open Settings
+              </button>
+            </div>
+            <button
+              onClick={() => setShowConfigNotice(false)}
+              className="text-yellow-400 hover:text-yellow-300 transition-colors"
+              title="Dismiss"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Messages Area */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {projectMessages.length === 0 ? (
