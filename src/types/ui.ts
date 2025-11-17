@@ -3,7 +3,7 @@
  * TypeScript interfaces for UI components and state
  */
 
-export type PanelMode = 'projects' | 'conversation' | 'files';
+export type PanelMode = 'projects' | 'conversation' | 'files' | 'settings';
 
 export interface Project {
   id: string;

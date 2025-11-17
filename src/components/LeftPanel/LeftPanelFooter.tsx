@@ -1,5 +1,5 @@
 import React from 'react';
-import { Brain } from 'lucide-react';
+import { Brain, Settings } from 'lucide-react';
 import { useAppStore } from '../../stores/appStore';
 
 export const LeftPanelFooter: React.FC = () => {
@@ -8,6 +8,7 @@ export const LeftPanelFooter: React.FC = () => {
   const contextUsage = useAppStore((state) => state.contextUsage);
   const availableModels = useAppStore((state) => state.availableModels);
   const setSelectedModel = useAppStore((state) => state.setSelectedModel);
+  const setLeftPanelMode = useAppStore((state) => state.setLeftPanelMode);
 
   // Hide footer in Project Files mode
   if (leftPanelMode === 'files') {
@@ -15,7 +16,7 @@ export const LeftPanelFooter: React.FC = () => {
   }
 
   return (
-    <div className="h-14 border-t border-gray-700 bg-gray-800 flex items-center justify-between px-4">
+    <div className="h-14 border-t border-gray-700 bg-gray-800 flex items-center justify-between px-4 gap-2">
       {/* Model Selector */}
       <div className="flex-1">
         <select
@@ -35,9 +36,20 @@ export const LeftPanelFooter: React.FC = () => {
         </select>
       </div>
 
+      {/* Settings Icon - only show in projects mode */}
+      {leftPanelMode === 'projects' && (
+        <button
+          onClick={() => setLeftPanelMode('settings')}
+          className="p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded transition-colors"
+          title="Settings"
+        >
+          <Settings className="w-5 h-5" />
+        </button>
+      )}
+
       {/* Context Usage */}
       {contextUsage && (
-        <div className="flex items-center gap-2 ml-4 text-sm text-gray-400">
+        <div className="flex items-center gap-2 text-sm text-gray-400">
           <Brain className="w-4 h-4" />
           <span>
             {contextUsage.used.toLocaleString()} ({contextUsage.percentage}%)
