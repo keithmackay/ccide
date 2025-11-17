@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - Settings Provider Management (In Progress)
+- User documentation for LLM provider management (`docs/user-guide/provider-management.md`)
+- Comprehensive guide for encrypted API key storage, session management, and security
+- AddProviderDialog component for inline provider addition
+- Test suites for provider management dialogs
+- CHANGELOG tracking for version history and roadmap
+
+### In Progress
+- ConfirmDeleteProviderDialog component with re-authentication
+- ChangeDefaultModelDialog component with re-authentication
+- Integration of dialogs into SettingsPage
+- Session refresh on conversation activity (ConversationPane)
+- Session refresh after successful LLM API calls (LLMService)
+- Integration tests for complete provider management flow
+- E2E tests for provider management UI workflows
+
+### Planned - Provider Management Enhancement
+- Biometric unlock support for supported browsers
+- Cross-device encrypted sync with separate encryption key
+- API key validation before saving configurations
+- Provider health monitoring and quota tracking
+- Enhanced error messages and user feedback
+
 ## [0.2.0] - 2024-11-17
 
 ### Added - LLM Conversation Features
