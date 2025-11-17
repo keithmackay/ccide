@@ -46,7 +46,10 @@ export const App: React.FC = () => {
             }
           } else if (models.length > 0) {
             // If no default, use first model
-            setSelectedModel(models[0]);
+            const firstModel = models[0];
+            if (firstModel) {
+              setSelectedModel(firstModel);
+            }
           }
         }
       } catch (error) {

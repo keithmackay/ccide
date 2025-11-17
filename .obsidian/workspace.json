@@ -172,6 +172,7 @@
   },
   "active": "826efaf41ec60b6b",
   "lastOpenFiles": [
+    "src/components/SettingsPage.tsx.tmp.30284.1763359182287",
     "src/components/SettingsPage.tsx.tmp.30284.1763359010378",
     "src/components/SettingsPage.tsx.tmp.30284.1763359010009",
     "src/components/SettingsPage.tsx.tmp.30284.1763359009712",
@@ -182,7 +183,6 @@
     "src/components/LeftPanel/ProjectsView.tsx.tmp.30284.1763358215694",
     "src/services/OrchestratorService.ts",
     "src/tests/unit/services/LLMService.test.ts",
-    "src/tests/unit/services/ConversationService.test.ts",
     "PR_DESCRIPTION.md",
     "PASSWORD_MANAGEMENT_INTEGRATION.md",
     "thoughts/shared/handoffs/general/2025-11-16_23-42-52_settings-ui-implementation.md",

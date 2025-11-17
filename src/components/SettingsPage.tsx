@@ -54,7 +54,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onClose }) => {
   const settingsService = getSettingsService();
   const setAppAvailableModels = useAppStore((state) => (state as any).setAvailableModels);
   const setSelectedModel = useAppStore((state) => state.setSelectedModel);
-  const { password: sessionPassword, setPassword: setSessionPassword } = usePasswordSession();
+  const { setPassword: setSessionPassword } = usePasswordSession();
 
   useEffect(() => {
     loadSettings();
@@ -110,7 +110,10 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onClose }) => {
             setSelectedModel(defaultModel);
           }
         } else if (models.length > 0) {
-          setSelectedModel(models[0]);
+          const firstModel = models[0];
+          if (firstModel) {
+            setSelectedModel(firstModel);
+          }
         }
       }
     } catch (err) {
