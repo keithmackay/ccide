@@ -1,11 +1,19 @@
 import React from 'react';
 import { useAppStore } from '../../stores/appStore';
 import { FileText } from 'lucide-react';
+import { SettingsPage } from '../SettingsPage';
 
 export const RightPanelWorkpane: React.FC = () => {
+  const rightPanelMode = useAppStore((state) => state.rightPanelMode);
   const rightPanelContent = useAppStore((state) => state.rightPanelContent);
   const selectedFile = useAppStore((state) => state.selectedFile);
   const activeProject = useAppStore((state) => state.activeProject);
+  const setRightPanelMode = useAppStore((state) => state.setRightPanelMode);
+
+  // Show settings page
+  if (rightPanelMode === 'settings') {
+    return <SettingsPage onClose={() => setRightPanelMode('content')} />;
+  }
 
   // Display file content if a file is selected
   const displayContent = selectedFile

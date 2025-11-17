@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { AppState, Project, Message, FileNode, LLMModel, PanelMode } from '../types/ui';
+import { AppState, Project, Message, FileNode, LLMModel, PanelMode, RightPanelMode } from '../types/ui';
 
 export const useAppStore = create<AppState>((set) => ({
   // Initial panel state
@@ -25,6 +25,7 @@ export const useAppStore = create<AppState>((set) => ({
   fileTree: [],
 
   // Initial right panel
+  rightPanelMode: 'content',
   rightPanelContent: '',
   rightPanelHeader: 'Welcome to CCIDE',
   availableFiles: [],
@@ -32,6 +33,9 @@ export const useAppStore = create<AppState>((set) => ({
   // Actions
   setLeftPanelMode: (mode: PanelMode) =>
     set({ leftPanelMode: mode }),
+
+  setRightPanelMode: (mode: RightPanelMode) =>
+    set({ rightPanelMode: mode }),
 
   toggleLeftPanel: () =>
     set((state) => ({ isLeftPanelVisible: !state.isLeftPanelVisible })),
@@ -93,6 +97,9 @@ export const useAppStore = create<AppState>((set) => ({
 
   setSelectedModel: (model: LLMModel | null) =>
     set({ selectedModel: model }),
+
+  setAvailableModels: (models: LLMModel[]) =>
+    set({ availableModels: models }),
 
   setFileTree: (tree: FileNode[]) =>
     set({ fileTree: tree }),

@@ -8,7 +8,7 @@ export const LeftPanelFooter: React.FC = () => {
   const contextUsage = useAppStore((state) => state.contextUsage);
   const availableModels = useAppStore((state) => state.availableModels);
   const setSelectedModel = useAppStore((state) => state.setSelectedModel);
-  const setLeftPanelMode = useAppStore((state) => state.setLeftPanelMode);
+  const setRightPanelMode = useAppStore((state) => state.setRightPanelMode);
 
   // Hide footer in Project Files mode
   if (leftPanelMode === 'files') {
@@ -39,7 +39,7 @@ export const LeftPanelFooter: React.FC = () => {
       {/* Settings Icon - only show in projects mode */}
       {leftPanelMode === 'projects' && (
         <button
-          onClick={() => setLeftPanelMode('settings')}
+          onClick={() => setRightPanelMode('settings')}
           className="p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded transition-colors"
           title="Settings"
         >

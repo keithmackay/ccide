@@ -3,7 +3,8 @@
  * TypeScript interfaces for UI components and state
  */
 
-export type PanelMode = 'projects' | 'conversation' | 'files' | 'settings';
+export type PanelMode = 'projects' | 'conversation' | 'files';
+export type RightPanelMode = 'content' | 'settings';
 
 export interface Project {
   id: string;
@@ -68,12 +69,14 @@ export interface AppState {
   fileTree: FileNode[];
 
   // Right panel
+  rightPanelMode: RightPanelMode;
   rightPanelContent: string;
   rightPanelHeader: string;
   availableFiles: string[];
 
   // Actions
   setLeftPanelMode: (mode: PanelMode) => void;
+  setRightPanelMode: (mode: RightPanelMode) => void;
   toggleLeftPanel: () => void;
   toggleRightPanel: () => void;
   setActiveProject: (project: Project | null) => void;
@@ -84,6 +87,7 @@ export interface AppState {
   addMessage: (message: Message) => void;
   setMessages: (messages: Message[]) => void;
   setSelectedModel: (model: LLMModel | null) => void;
+  setAvailableModels: (models: LLMModel[]) => void;
   setFileTree: (tree: FileNode[]) => void;
   toggleFileExpanded: (fileId: string) => void;
   setRightPanelContent: (content: string, header: string) => void;
