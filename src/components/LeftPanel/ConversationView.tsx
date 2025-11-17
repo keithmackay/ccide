@@ -4,6 +4,8 @@ import { useAppStore } from '../../stores/appStore';
 import { cn } from '../../utils/cn';
 import { getLLMService } from '../../services/LLMService';
 import { LLMMessage } from '../../types/index';
+import { usePasswordSession } from '../../hooks/usePasswordSession';
+import { ReauthModal } from '../Auth/ReauthModal';
 
 export const ConversationView: React.FC = () => {
   const messages = useAppStore((state) => state.messages);
@@ -11,9 +13,13 @@ export const ConversationView: React.FC = () => {
   const updateMessage = useAppStore((state) => state.updateMessage);
   const activeProject = useAppStore((state) => state.activeProject);
 
+  const { isSessionExpired, refreshSession, setPassword } = usePasswordSession();
+
   const [input, setInput] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null);
+  const [showReauthModal, setShowReauthModal] = useState(false);
+  const [pendingPrompt, setPendingPrompt] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const streamingRef = useRef(false);
 
@@ -38,22 +44,36 @@ export const ConversationView: React.FC = () => {
     setStreamingMessageId(null);
   }, []);
 
-  const handleSendWithStreaming = async () => {
-    if (!input.trim() || !activeProject) return;
+  const handleSendWithStreaming = async (promptText?: string) => {
+    const messageText = promptText || input;
+    if (!messageText.trim() || !activeProject) return;
+
+    // Check if session is expired
+    if (isSessionExpired()) {
+      // Save the prompt to execute after re-authentication
+      setPendingPrompt(messageText);
+      setShowReauthModal(true);
+      return;
+    }
 
     const userMessage = {
       id: `msg-${Date.now()}`,
       role: 'user' as const,
-      content: input,
+      content: messageText,
       timestamp: new Date().toISOString(),
       projectId: activeProject.id,
     };
 
     addMessage(userMessage);
-    const currentInput = input;
-    setInput('');
+    const currentInput = messageText;
+    if (!promptText) {
+      setInput('');
+    }
     setIsStreaming(true);
     streamingRef.current = true;
+
+    // Refresh session on LLM activity to reset timeout
+    refreshSession();
 
     try {
       // Try to get LLM service - fallback to simulation if not configured
@@ -173,7 +193,28 @@ export const ConversationView: React.FC = () => {
       streamingRef.current = false;
       setIsStreaming(false);
       setStreamingMessageId(null);
+
+      // Refresh session after LLM activity completes
+      refreshSession();
     }
+  };
+
+  const handleReauthSuccess = (password: string) => {
+    // Update password in session
+    setPassword(password, true);
+    setShowReauthModal(false);
+
+    // Execute the pending prompt
+    if (pendingPrompt) {
+      const prompt = pendingPrompt;
+      setPendingPrompt(null);
+      handleSendWithStreaming(prompt);
+    }
+  };
+
+  const handleReauthCancel = () => {
+    setShowReauthModal(false);
+    setPendingPrompt(null);
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -264,6 +305,14 @@ export const ConversationView: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Re-authentication Modal */}
+      <ReauthModal
+        isOpen={showReauthModal}
+        onSuccess={handleReauthSuccess}
+        onCancel={handleReauthCancel}
+        message="Your session has expired due to 30 minutes of conversation inactivity. Please re-enter your password to continue with your prompt."
+      />
     </div>
   );
 };

@@ -25,6 +25,8 @@ export interface UsePasswordSessionReturn {
   setPassword: (password: string, remember?: boolean) => void;
   clearPassword: () => void;
   isSessionExpired: () => boolean;
+  refreshSession: () => void;
+  getTimeUntilExpiry: () => number;
 }
 
 /**
@@ -54,6 +56,7 @@ function deobfuscate(encoded: string): string {
 export function usePasswordSession(): UsePasswordSessionReturn {
   const [password, setPasswordState] = useState<string | null>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const expiryTimeRef = useRef<number | null>(null);
 
   // Load password from sessionStorage on mount
   useEffect(() => {
@@ -98,9 +101,13 @@ export function usePasswordSession(): UsePasswordSessionReturn {
       clearTimeout(timeoutRef.current);
     }
 
+    // Set expiry time
+    expiryTimeRef.current = Date.now() + timeoutMs;
+
     timeoutRef.current = setTimeout(() => {
       setPasswordState(null);
       sessionStorage.removeItem(SESSION_STORAGE_KEY);
+      expiryTimeRef.current = null;
     }, timeoutMs);
   }, []);
 
@@ -136,8 +143,31 @@ export function usePasswordSession(): UsePasswordSessionReturn {
     }
   }, []);
 
+  // Refresh the session timeout (called on activity)
+  const refreshSession = useCallback(() => {
+    if (password) {
+      try {
+        // Update timestamp in sessionStorage
+        const session: PasswordSession = {
+          password,
+          timestamp: Date.now(),
+        };
+        const encoded = obfuscate(JSON.stringify(session));
+        sessionStorage.setItem(SESSION_STORAGE_KEY, encoded);
+
+        // Reschedule timeout
+        scheduleTimeout(SESSION_TIMEOUT_MS);
+      } catch (error) {
+        console.error('Failed to refresh session:', error);
+      }
+    }
+  }, [password, scheduleTimeout]);
+
   // Check if session is expired
   const isSessionExpired = useCallback((): boolean => {
+    // If no password in memory, session is expired
+    if (!password) return true;
+
     try {
       const stored = sessionStorage.getItem(SESSION_STORAGE_KEY);
       if (!stored) return true;
@@ -150,6 +180,13 @@ export function usePasswordSession(): UsePasswordSessionReturn {
     } catch {
       return true;
     }
+  }, [password]);
+
+  // Get time remaining until session expires (in milliseconds)
+  const getTimeUntilExpiry = useCallback((): number => {
+    if (!expiryTimeRef.current) return 0;
+    const remaining = expiryTimeRef.current - Date.now();
+    return Math.max(0, remaining);
   }, []);
 
   return {
@@ -158,6 +195,8 @@ export function usePasswordSession(): UsePasswordSessionReturn {
     setPassword,
     clearPassword,
     isSessionExpired,
+    refreshSession,
+    getTimeUntilExpiry,
   };
 }
 
