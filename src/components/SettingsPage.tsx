@@ -7,7 +7,7 @@ import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { getSettingsService } from '../services/SettingsService';
 import { getAccountService } from '../services/AccountService';
-import { getSettingsHelper } from '../services/SettingsHelper';
+import { clearConfigCache } from '../services/SettingsHelper';
 import { StoredLLMConfig, Settings } from '../types/models';
 import { useAppStore } from '../stores/appStore';
 import { usePasswordSession } from '../hooks/usePasswordSession';
@@ -65,7 +65,6 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onClose }) => {
 
   const settingsService = getSettingsService();
   const accountService = getAccountService();
-  const settingsHelper = getSettingsHelper();
   const setAppAvailableModels = useAppStore((state) => (state as any).setAvailableModels);
   const setSelectedModel = useAppStore((state) => state.setSelectedModel);
   const { password: sessionPassword, setPassword: setSessionPassword } = usePasswordSession();
@@ -301,7 +300,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onClose }) => {
       await settingsService.addLLMConfig(newConfig, config.password);
 
       // Clear config cache
-      settingsHelper.clearConfigCache();
+      clearConfigCache();
 
       // Reload providers
       await loadProviders();
@@ -328,7 +327,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onClose }) => {
       await settingsService.removeLLMConfig(deleteTarget.id, password);
 
       // Clear config cache
-      settingsHelper.clearConfigCache();
+      clearConfigCache();
 
       // Reload providers
       await loadProviders();
@@ -368,7 +367,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onClose }) => {
       await settingsService.saveLLMConfigs(updatedProviders, password);
 
       // Clear config cache
-      settingsHelper.clearConfigCache();
+      clearConfigCache();
 
       // Reload providers
       await loadProviders();
