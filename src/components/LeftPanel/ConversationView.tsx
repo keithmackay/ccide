@@ -2,13 +2,8 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Send, StopCircle } from 'lucide-react';
 import { useAppStore } from '../../stores/appStore';
 import { cn } from '../../utils/cn';
-import { initializeLLMService, getLLMService } from '../../services/LLMService';
-import { getSettingsService } from '../../services/SettingsService';
-import { parseError, ErrorMessageConfig } from '../common/ErrorMessage';
-import { LLMMessage, LLMConfig } from '../../types/index';
-import { PasswordDialog } from '../common/PasswordDialog';
-import { usePasswordSession, usePasswordWarning } from '../../hooks/usePasswordSession';
-import { validatePassword } from '../../services/SettingsHelper';
+import { getLLMService } from '../../services/LLMService';
+import { LLMMessage } from '../../types/index';
 
 export const ConversationView: React.FC = () => {
   const messages = useAppStore((state) => state.messages);
@@ -19,16 +14,8 @@ export const ConversationView: React.FC = () => {
   const [input, setInput] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null);
-  const [showPasswordDialog, setShowPasswordDialog] = useState(false);
-  const [passwordError, setPasswordError] = useState('');
-  const [error, setError] = useState<ErrorMessageConfig | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const abortControllerRef = useRef<AbortController | null>(null);
   const streamingRef = useRef(false);
-
-  // Use password session hook for secure password management
-  const { password, hasPassword, setPassword, clearPassword } = usePasswordSession();
-  usePasswordWarning(hasPassword);
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -45,22 +32,7 @@ export const ConversationView: React.FC = () => {
     }
   }, [isStreaming, messages, scrollToBottom]);
 
-  const handlePasswordSubmit = async (pwd: string, remember: boolean) => {
-    const isValid = await validatePassword(pwd);
-    if (isValid) {
-      setPassword(pwd, remember);
-      setShowPasswordDialog(false);
-      setPasswordError('');
-    } else {
-      setPasswordError('Invalid password. Please try again.');
-    }
-  };
-
   const handleStopStreaming = useCallback(() => {
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-      abortControllerRef.current = null;
-    }
     streamingRef.current = false;
     setIsStreaming(false);
     setStreamingMessageId(null);
@@ -80,74 +52,18 @@ export const ConversationView: React.FC = () => {
     addMessage(userMessage);
     const currentInput = input;
     setInput('');
-    setError(null);
     setIsStreaming(true);
     streamingRef.current = true;
 
-    // Create abort controller for this stream
-    abortControllerRef.current = new AbortController();
-
     try {
-      const settingsService = getSettingsService();
-
-      // Check if we need password
-      const settingsWithoutPassword = await settingsService.getSettings();
-      if (settingsWithoutPassword?.encryptedData && !password) {
-        setShowPasswordDialog(true);
-        setIsStreaming(false);
-        streamingRef.current = false;
-        // Re-add the user input since we need password first
-        setInput(currentInput);
-        return;
+      // Try to get LLM service - fallback to simulation if not configured
+      let llmService;
+      try {
+        llmService = getLLMService();
+      } catch (err) {
+        console.warn('LLM service not initialized, using simulated response');
+        llmService = null;
       }
-
-      // Load settings with password if needed
-      const settings = await settingsService.getSettings(password || undefined);
-
-      if (!settings || !settings.llmConfigs || settings.llmConfigs.length === 0) {
-        throw new Error('No LLM configuration found. Please configure your API keys in Settings.');
-      }
-
-      // Get the default config or first available
-      const llmConfig = settings.llmConfigs.find(c => c.isDefault) || settings.llmConfigs[0];
-
-      if (!llmConfig || !llmConfig.apiKey || llmConfig.apiKey === '***ENCRYPTED***') {
-        // Password might be wrong, clear it and ask again
-        clearPassword();
-        setPasswordError('Failed to decrypt API key. Please enter your password again.');
-        setShowPasswordDialog(true);
-        setIsStreaming(false);
-        streamingRef.current = false;
-        setInput(currentInput);
-        return;
-      }
-
-      // Initialize LLM service
-      const config: LLMConfig = {
-        provider: llmConfig.provider,
-        model: llmConfig.modelName,
-        apiKey: llmConfig.apiKey,
-        endpoint: llmConfig.endpoint,
-        maxTokens: llmConfig.maxTokens,
-        temperature: llmConfig.temperature,
-      };
-
-      initializeLLMService(config);
-      const llmService = getLLMService();
-
-      // Convert UI messages to LLM messages (only for current project)
-      const projectMessages = messages
-        .filter(msg => msg.projectId === activeProject.id)
-        .map((msg): LLMMessage => ({
-          role: msg.role,
-          content: msg.content,
-        }));
-
-      // Add the current user message
-      projectMessages.push({
-        role: 'user',
-        content: currentInput,
-      });
 
       // Create assistant message for streaming
       const assistantMessageId = `msg-${Date.now()}`;
@@ -161,76 +77,102 @@ export const ConversationView: React.FC = () => {
       addMessage(assistantMessage);
       setStreamingMessageId(assistantMessageId);
 
-      // Stream response from LLM
-      let accumulatedContent = '';
-      let chunkBuffer = '';
-      let lastUpdateTime = Date.now();
-      const BATCH_INTERVAL = 50; // ms - batch updates for performance
+      if (llmService) {
+        // Real streaming from LLM service
+        const projectMessages = messages
+          .filter(msg => msg.projectId === activeProject.id)
+          .map((msg): LLMMessage => ({
+            role: msg.role,
+            content: msg.content,
+          }));
 
-      for await (const chunk of llmService.streamRequest({
-        messages: projectMessages,
-        systemPrompt: 'You are a helpful AI assistant integrated into CCIDE, a code IDE.',
-      })) {
-        // Check if streaming was cancelled
-        if (!streamingRef.current) {
-          break;
+        projectMessages.push({
+          role: 'user',
+          content: currentInput,
+        });
+
+        let accumulatedContent = '';
+        let chunkBuffer = '';
+        let lastUpdateTime = Date.now();
+        const BATCH_INTERVAL = 50; // ms - batch updates for performance
+
+        for await (const chunk of llmService.streamRequest({
+          messages: projectMessages,
+          systemPrompt: 'You are a helpful AI assistant integrated into CCIDE, a code IDE.',
+        })) {
+          // Check if streaming was cancelled
+          if (!streamingRef.current) {
+            break;
+          }
+
+          chunkBuffer += chunk;
+          accumulatedContent += chunk;
+
+          // Batch updates to avoid excessive re-renders
+          const now = Date.now();
+          if (now - lastUpdateTime >= BATCH_INTERVAL || chunkBuffer.length > 50) {
+            updateMessage(assistantMessageId, { content: accumulatedContent });
+            chunkBuffer = '';
+            lastUpdateTime = now;
+
+            // Use requestAnimationFrame for smoother scrolling
+            requestAnimationFrame(() => {
+              if (streamingRef.current) {
+                scrollToBottom();
+              }
+            });
+          }
         }
 
-        chunkBuffer += chunk;
-        accumulatedContent += chunk;
-
-        // Batch updates to avoid excessive re-renders
-        const now = Date.now();
-        if (now - lastUpdateTime >= BATCH_INTERVAL || chunkBuffer.length > 50) {
+        // Final update with any remaining content
+        if (chunkBuffer) {
           updateMessage(assistantMessageId, { content: accumulatedContent });
-          chunkBuffer = '';
-          lastUpdateTime = now;
+        }
+      } else {
+        // Simulated streaming response
+        const simulatedResponse = 'This is a simulated streaming response. The LLM service is not configured yet. Configure your API keys in Settings to enable real-time AI responses.';
+        let currentIndex = 0;
 
-          // Use requestAnimationFrame for smoother scrolling
+        const streamInterval = setInterval(() => {
+          if (!streamingRef.current || currentIndex >= simulatedResponse.length) {
+            clearInterval(streamInterval);
+            return;
+          }
+
+          // Stream 1-3 characters at a time for realistic effect
+          const chunkSize = Math.floor(Math.random() * 3) + 1;
+          currentIndex += chunkSize;
+
+          updateMessage(assistantMessageId, {
+            content: simulatedResponse.slice(0, currentIndex),
+          });
+
           requestAnimationFrame(() => {
             if (streamingRef.current) {
               scrollToBottom();
             }
           });
-        }
-      }
-
-      // Final update with any remaining content
-      if (chunkBuffer) {
-        updateMessage(assistantMessageId, { content: accumulatedContent });
+        }, 30);
       }
 
     } catch (err) {
       console.error('Error streaming message:', err);
 
-      // Only show error if not aborted
-      if (err instanceof Error && err.name !== 'AbortError') {
-        const errorMessage = err.message || 'An unknown error occurred';
+      const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred';
 
-        // Check if it's a password/decryption error
-        if (errorMessage.includes('password') || errorMessage.includes('decrypt') || errorMessage.includes('Invalid password')) {
-          clearPassword();
-          setPasswordError('Session expired or invalid password. Please try again.');
-          setShowPasswordDialog(true);
-        } else {
-          setError(parseError(err));
-
-          // Add error message to chat
-          const errorChatMessage = {
-            id: `msg-${Date.now()}`,
-            role: 'assistant' as const,
-            content: `Error: ${errorMessage}`,
-            timestamp: new Date().toISOString(),
-            projectId: activeProject.id,
-          };
-          addMessage(errorChatMessage);
-        }
-      }
+      // Add error message to chat
+      const errorChatMessage = {
+        id: `msg-${Date.now()}`,
+        role: 'assistant' as const,
+        content: `Error: ${errorMessage}`,
+        timestamp: new Date().toISOString(),
+        projectId: activeProject.id,
+      };
+      addMessage(errorChatMessage);
     } finally {
       streamingRef.current = false;
       setIsStreaming(false);
       setStreamingMessageId(null);
-      abortControllerRef.current = null;
     }
   };
 
@@ -322,20 +264,6 @@ export const ConversationView: React.FC = () => {
           )}
         </div>
       </div>
-
-      {/* Password Dialog - Enhanced version with validation and session management */}
-      <PasswordDialog
-        isOpen={showPasswordDialog}
-        onClose={() => {
-          setShowPasswordDialog(false);
-          setPasswordError('');
-        }}
-        onSubmit={handlePasswordSubmit}
-        error={passwordError}
-        title="Unlock Settings"
-        description="Your API keys are encrypted. Please enter your password to continue."
-        showRememberOption={true}
-      />
     </div>
   );
 };

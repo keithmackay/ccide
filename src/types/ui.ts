@@ -85,6 +85,7 @@ export interface AppState {
   archiveProject: (projectId: string) => void;
   unarchiveProject: (projectId: string) => void;
   addMessage: (message: Message) => void;
+  updateMessage: (messageId: string, updates: Partial<Message>) => void;
   setMessages: (messages: Message[]) => void;
   setSelectedModel: (model: LLMModel | null) => void;
   setAvailableModels: (models: LLMModel[]) => void;
