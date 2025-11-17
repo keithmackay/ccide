@@ -6,7 +6,6 @@ import { AccountSetup } from './components/Auth/AccountSetup';
 import { useAppStore } from './stores/appStore';
 import { cn } from './utils/cn';
 import { getSettingsService } from './services/SettingsService';
-import { getAccountService } from './services/AccountService';
 import { LLMModel } from './types/ui';
 import { usePasswordSession } from './hooks/usePasswordSession';
 import { getDefaultModelConfig } from './services/SettingsHelper';

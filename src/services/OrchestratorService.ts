@@ -224,7 +224,7 @@ Finalizing project...`,
  * Determine the current phase based on project state
  * This would inspect the project directory to see what's already been completed
  */
-export function detectProjectPhase(projectPath: string): ProjectPhase {
+export function detectProjectPhase(_projectPath: string): ProjectPhase {
   // TODO: Implement phase detection based on existing files
   // For now, always start at discovery
   return ProjectPhase.DISCOVERY;
@@ -255,14 +255,14 @@ export function getNextPhase(currentPhase: ProjectPhase): ProjectPhase | null {
     return null;
   }
 
-  return phaseOrder[currentIndex + 1];
+  return phaseOrder[currentIndex + 1] ?? null;
 }
 
 /**
  * Check if a phase is complete
  * This would verify the deliverables for each phase exist
  */
-export function isPhaseComplete(phase: ProjectPhase, projectPath: string): boolean {
+export function isPhaseComplete(_phase: ProjectPhase, _projectPath: string): boolean {
   // TODO: Implement deliverable checking
   // For now, return false
   return false;

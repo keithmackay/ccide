@@ -5,6 +5,7 @@
 
 import { Project } from '../types/models';
 import { getDatabase, STORES } from './Database';
+import { getProjectFolderService } from './ProjectFolderService';
 
 export class ProjectService {
   private db = getDatabase();
@@ -44,6 +45,16 @@ export class ProjectService {
     };
 
     await this.db.add(STORES.PROJECTS, project);
+
+    // Create folder structure for the new project
+    try {
+      const folderService = getProjectFolderService();
+      await folderService.createProjectFolders(id);
+    } catch (error) {
+      console.error(`Failed to create folders for project ${id}:`, error);
+      // Don't fail project creation if folder creation fails
+    }
+
     return project;
   }
 
@@ -135,6 +146,14 @@ export class ProjectService {
    * Delete a project
    */
   async deleteProject(id: string): Promise<void> {
+    // Delete all project files and folders first
+    try {
+      const folderService = getProjectFolderService();
+      await folderService.deleteProjectFiles(id);
+    } catch (error) {
+      console.error(`Failed to delete files for project ${id}:`, error);
+    }
+
     await this.db.delete(STORES.PROJECTS, id);
   }
 
@@ -246,21 +265,21 @@ export class ProjectService {
 
         // Extract description if present
         const descMatch = line.match(/\).*?-\s*(.+)$/);
-        const description = descMatch ? descMatch[1].trim() : undefined;
+        const description = descMatch ? descMatch[1]!.trim() : undefined;
 
         // Check if project already exists
-        const existingProjects = await this.searchProjects(name);
+        const existingProjects = await this.searchProjects(name!);
         if (existingProjects.length === 0) {
-          const id = this.generateProjectId(name);
+          const id = this.generateProjectId(name!);
           const now = Date.now();
 
           const project: Project = {
             id,
-            name,
+            name: name!,
             status,
             createdAt: now,
             updatedAt: now,
-            path,
+            path: path!,
             description,
           };
 
@@ -308,6 +327,14 @@ export class ProjectService {
    * Clear all projects
    */
   async clearAll(): Promise<void> {
+    // Clear all project files and folders first
+    try {
+      await this.db.clear(STORES.PROJECT_FILES);
+      await this.db.clear(STORES.PROJECT_FOLDERS);
+    } catch (error) {
+      console.error('Failed to clear project files and folders:', error);
+    }
+
     await this.db.clear(STORES.PROJECTS);
     this.currentProjectId = null;
   }

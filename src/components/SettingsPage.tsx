@@ -51,12 +51,11 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onClose }) => {
   const [success, setSuccess] = useState('');
 
   // LLM Config form state
-  const [showAddLLM, setShowAddLLM] = useState(false);
   const [newLLMConfig, setNewLLMConfig] = useState<Partial<StoredLLMConfig>>({
     provider: 'anthropic',
     isDefault: false,
   });
-  const [availableModels, setLocalAvailableModels] = useState<{ id: string; name: string }[]>([]);
+  const [, setLocalAvailableModels] = useState<{ id: string; name: string }[]>([]);
 
   // Dialog state
   const [showAddProvider, setShowAddProvider] = useState(false);
@@ -142,78 +141,6 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onClose }) => {
       }
     } catch (err) {
       setError('Invalid password');
-    }
-  };
-
-  const handleAddLLMConfig = async () => {
-    try {
-      setError('');
-
-      // Validation
-      if (!newLLMConfig.modelName || !newLLMConfig.apiKey) {
-        setError('Model and API key are required');
-        return;
-      }
-
-      if (!password) {
-        setError('Password is required to encrypt API keys');
-        return;
-      }
-
-      const config: StoredLLMConfig = {
-        id: `${newLLMConfig.provider}-${Date.now()}`,
-        provider: newLLMConfig.provider as any,
-        modelName: newLLMConfig.modelName,
-        apiKey: newLLMConfig.apiKey,
-        isDefault: newLLMConfig.isDefault || false,
-        maxTokens: newLLMConfig.maxTokens,
-        temperature: newLLMConfig.temperature,
-      };
-
-      await settingsService.addLLMConfig(config, password);
-      await loadSettings();
-
-      // Refresh app state with updated models
-      const updatedSettings = await settingsService.getSettings(password);
-      if (updatedSettings?.llmConfigs && updatedSettings.llmConfigs.length > 0) {
-        const models: LLMModel[] = updatedSettings.llmConfigs.map(c => ({
-          id: c.id,
-          name: c.modelName,
-          provider: c.provider,
-          contextWindow: c.maxTokens || 200000,
-        }));
-
-        setAppAvailableModels(models);
-
-        // If this is the default or the first model, select it
-        if (config.isDefault) {
-          const newModel = models.find(m => m.id === config.id);
-          if (newModel) {
-            setSelectedModel(newModel);
-          }
-        }
-      }
-
-      // Reset form
-      setNewLLMConfig({
-        provider: 'anthropic',
-        isDefault: false,
-      });
-      setShowAddLLM(false);
-      setSuccess('LLM configuration added and encrypted successfully');
-    } catch (err) {
-      setError('Failed to add LLM configuration');
-    }
-  };
-
-  const handleRemoveLLMConfig = async (configId: string) => {
-    try {
-      setError('');
-      await settingsService.removeLLMConfig(configId, password);
-      await loadSettings();
-      setSuccess('LLM configuration removed successfully');
-    } catch (err) {
-      setError('Failed to remove LLM configuration');
     }
   };
 
@@ -349,7 +276,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onClose }) => {
     }
   };
 
-  const handleDeleteProvider = async (username: string, password: string) => {
+  const handleDeleteProvider = async (_username: string, password: string) => {
     if (!deleteTarget) return;
 
     try {
@@ -383,7 +310,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onClose }) => {
     }
   };
 
-  const handleChangeDefault = async (username: string, password: string) => {
+  const handleChangeDefault = async (_username: string, password: string) => {
     if (!changeDefaultTarget) return;
 
     try {

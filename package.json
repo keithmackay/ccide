@@ -1,6 +1,6 @@
 {
   "name": "ccide",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Claude Code IDE - A web-based IDE for LLMs with agent coordination and project management",
   "type": "module",
   "author": "CCIDE Team",

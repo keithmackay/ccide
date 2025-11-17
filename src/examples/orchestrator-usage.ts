@@ -6,7 +6,6 @@
 import {
   AgentOrchestrator,
   OrchestratorConfig,
-  WorkflowPhase,
   initializeLLMService
 } from '../services/index.js';
 
@@ -52,7 +51,7 @@ async function main() {
 
   orchestrator.on('approval-required', ({ phase, deliverables }) => {
     console.log('Approval required for phase:', phase);
-    console.log('Deliverables:', deliverables.map(d => d.path));
+    console.log('Deliverables:', deliverables.map((d: any) => d.path));
   });
 
   orchestrator.on('workflow-completed', () => {

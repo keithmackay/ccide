@@ -12,7 +12,6 @@ const SETTINGS_ID = 1; // Single settings record
 
 export class SettingsService {
   private db = getDatabase();
-  private encryptionKey: CryptoKey | null = null;
 
   constructor() {
     this.init();
@@ -48,7 +47,7 @@ export class SettingsService {
     return await crypto.subtle.deriveKey(
       {
         name: 'PBKDF2',
-        salt: salt,
+        salt: salt as BufferSource,
         iterations: 100000,
         hash: 'SHA-256',
       },

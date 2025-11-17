@@ -3,6 +3,7 @@ import { useAppStore } from '../../stores/appStore';
 import { FileText } from 'lucide-react';
 import { SettingsPage } from '../SettingsPage';
 import { PhaseReviewPanel } from './PhaseReviewPanel';
+import { FilePreviewPanel } from './FilePreview';
 
 export const RightPanelWorkpane: React.FC = () => {
   const rightPanelMode = useAppStore((state) => state.rightPanelMode);
@@ -21,12 +22,20 @@ export const RightPanelWorkpane: React.FC = () => {
     return <PhaseReviewPanel />;
   }
 
-  // Display file content if a file is selected
-  const displayContent = selectedFile
-    ? `File: ${selectedFile.path}\n\n${rightPanelContent || 'File content will be displayed here...'}`
-    : rightPanelContent || 'Select a project or file to view content';
+  // Display file preview if a file is selected
+  if (selectedFile) {
+    return (
+      <div className="flex-1 overflow-auto bg-gray-900 p-6">
+        <FilePreviewPanel
+          file={selectedFile}
+          content={rightPanelContent}
+        />
+      </div>
+    );
+  }
 
-  const hasContent = rightPanelContent || selectedFile;
+  // Display generic content if available
+  const hasContent = rightPanelContent;
 
   return (
     <div className="flex-1 overflow-auto bg-gray-900 p-6">
@@ -43,7 +52,7 @@ export const RightPanelWorkpane: React.FC = () => {
       ) : (
         <div className="max-w-5xl">
           <pre className="text-sm text-gray-300 whitespace-pre-wrap font-mono">
-            {displayContent}
+            {rightPanelContent}
           </pre>
         </div>
       )}

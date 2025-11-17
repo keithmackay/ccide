@@ -7,8 +7,7 @@ import {
   WorkflowPhase,
   WorkflowPhaseConfig,
   ProgressState,
-  Deliverable,
-  Blocker
+  Deliverable
 } from '../types/index.js';
 import { EventEmitter } from 'events';
 

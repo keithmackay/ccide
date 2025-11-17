@@ -7,9 +7,8 @@ import {
   ProgressState,
   WorkflowPhase,
   Deliverable,
-  Blocker,
   Approval,
-  DeliverableType
+  Blocker
 } from '../types/index.js';
 import { promises as fs } from 'fs';
 import * as path from 'path';

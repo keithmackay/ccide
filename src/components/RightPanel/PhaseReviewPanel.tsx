@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useAppStore } from '../../stores/appStore';
-import { CheckCircle, FileText, Code, FileCode, ChevronDown, ChevronRight, Send } from 'lucide-react';
+import { CheckCircle, FileText, Code, FileCode, ChevronDown, ChevronRight, Send, Eye } from 'lucide-react';
 import { cn } from '../../utils/cn';
+import { PhaseFilesPanel } from './FilePreview';
 
 const PHASE_NAMES: Record<string, string> = {
   discovery: 'Project Discovery & Setup',
@@ -38,12 +39,48 @@ export const PhaseReviewPanel: React.FC = () => {
 
   const [feedback, setFeedback] = useState('');
   const [expandedDeliverable, setExpandedDeliverable] = useState<string | null>(null);
+  const [showFilesPanel, setShowFilesPanel] = useState(false);
 
   if (!currentPhase) {
     return null;
   }
 
   const phaseName = PHASE_NAMES[currentPhase.phase] || currentPhase.phase;
+
+  // If showing files panel, render it instead
+  if (showFilesPanel && currentPhase.deliverables.length > 0) {
+    return (
+      <div className="flex flex-col h-full bg-gray-900">
+        {/* Header with back button */}
+        <div className="flex-shrink-0 bg-gradient-to-r from-green-900/30 to-blue-900/30 border-b border-green-700/30 p-4">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setShowFilesPanel(false)}
+              className="text-gray-400 hover:text-gray-200 transition-colors"
+            >
+              <ChevronRight className="w-5 h-5 rotate-180" />
+            </button>
+            <div className="flex-1">
+              <h2 className="text-lg font-bold text-green-400">
+                {phaseName} - Generated Files
+              </h2>
+              <p className="text-xs text-gray-400 mt-1">
+                Review the files generated in this phase
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Files panel */}
+        <div className="flex-1 overflow-hidden">
+          <PhaseFilesPanel
+            deliverables={currentPhase.deliverables}
+            phaseName={phaseName}
+          />
+        </div>
+      </div>
+    );
+  }
 
   const handleContinue = () => {
     updatePhaseStatus('approved');
@@ -111,11 +148,20 @@ export const PhaseReviewPanel: React.FC = () => {
         <div className="space-y-4">
           {/* Deliverables Section - Full Width */}
           <div className="bg-gray-800 border border-gray-700 rounded-lg">
-            <div className="p-4 border-b border-gray-700">
+            <div className="p-4 border-b border-gray-700 flex items-center justify-between">
               <h3 className="text-base font-semibold text-gray-200 flex items-center gap-2">
                 <FileText className="w-4 h-4" />
                 Phase Deliverables ({currentPhase.deliverables.length})
               </h3>
+              {currentPhase.deliverables.length > 0 && (
+                <button
+                  onClick={() => setShowFilesPanel(true)}
+                  className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition-colors"
+                >
+                  <Eye className="w-4 h-4" />
+                  View All Files
+                </button>
+              )}
             </div>
 
             <div className="p-4 space-y-3">

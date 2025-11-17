@@ -17,7 +17,6 @@ window.addEventListener('error', (event) => {
   if (isExternalError) {
     console.warn('[Global] External script error suppressed (likely from browser extension):', event.message);
     event.preventDefault();
-    return true;
   }
 });
 
@@ -31,7 +30,6 @@ window.addEventListener('unhandledrejection', (event) => {
   if (isExternalError) {
     console.warn('[Global] External promise rejection suppressed (likely from browser extension):', event.reason);
     event.preventDefault();
-    return true;
   }
 });
 
