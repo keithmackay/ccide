@@ -85,29 +85,34 @@ export const App: React.FC = () => {
     const initLLMService = async () => {
       if (!password) {
         // No password, reset LLM service
+        console.log('[App] No password available, LLM service not initialized');
         resetLLMService();
         return;
       }
 
       try {
-        console.log('[App] Initializing LLM service with password...');
+        console.log('\n═══════════════════════════════════════════════════');
+        console.log('[App] 🔐 User logged in - Initializing LLM service...');
+        console.log('═══════════════════════════════════════════════════');
 
         // Get default model config with decrypted API key
         const modelConfig = await getDefaultModelConfig(password);
 
         if (!modelConfig) {
-          console.log('[App] No default model config found');
+          console.log('[App] ⚠️  No default model configured');
+          console.log('[App] 💡 User needs to configure API keys in Settings');
+          console.log('═══════════════════════════════════════════════════\n');
           return;
         }
 
-        console.log('[App] Model config retrieved:');
-        console.log('  - Provider:', modelConfig.provider);
-        console.log('  - Model name:', modelConfig.modelName);
-        console.log('  - Endpoint:', modelConfig.endpoint || 'default');
-        console.log('  - API key present:', !!modelConfig.apiKey);
-        console.log('  - API key length:', modelConfig.apiKey?.length || 0);
-        console.log('  - Max tokens:', modelConfig.maxTokens || 'default');
-        console.log('  - Temperature:', modelConfig.temperature ?? 'default');
+        console.log('[App] ✓ Default model config retrieved:');
+        console.log('  → Provider:', modelConfig.provider);
+        console.log('  → Model:', modelConfig.modelName);
+        console.log('  → Endpoint:', modelConfig.endpoint || 'proxy (default)');
+        console.log('  → API key:', modelConfig.apiKey ? '✓ present' : '✗ missing');
+        console.log('  → API key length:', modelConfig.apiKey?.length || 0, 'chars');
+        console.log('  → Max tokens:', modelConfig.maxTokens || 4096);
+        console.log('  → Temperature:', modelConfig.temperature ?? 0.7);
 
         // Convert StoredLLMConfig to LLMConfig
         const llmConfig: LLMConfig = {
@@ -121,10 +126,15 @@ export const App: React.FC = () => {
 
         // Initialize the LLM service
         initializeLLMService(llmConfig);
-        console.log('[App] LLM service initialized successfully with model:', modelConfig.modelName);
+        console.log('\n[App] ✅ LLM service initialized successfully!');
+        console.log('[App] 🚀 All conversations will use:', modelConfig.modelName);
+        console.log('[App] 🔄 Conversations will be routed through configured LLM service');
+        console.log('═══════════════════════════════════════════════════\n');
       } catch (error) {
-        console.error('[App] Failed to initialize LLM service:', error);
-        console.error('[App] Error details:', error instanceof Error ? error.stack : 'No stack trace');
+        console.error('\n[App] ❌ Failed to initialize LLM service');
+        console.error('[App] Error:', error instanceof Error ? error.message : 'Unknown error');
+        console.error('[App] Stack trace:', error instanceof Error ? error.stack : 'No stack trace');
+        console.log('═══════════════════════════════════════════════════\n');
       }
     };
 

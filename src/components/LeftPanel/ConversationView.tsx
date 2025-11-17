@@ -14,6 +14,7 @@ export const ConversationView: React.FC = () => {
   const activeProject = useAppStore((state) => state.activeProject);
   const setActiveProject = useAppStore((state) => state.setActiveProject);
   const addProject = useAppStore((state) => state.addProject);
+  const selectedModel = useAppStore((state) => state.selectedModel);
 
   const { isSessionExpired, refreshSession, setPassword } = usePasswordSession();
 
@@ -100,10 +101,14 @@ export const ConversationView: React.FC = () => {
       let llmService;
       try {
         llmService = getLLMService();
-        console.log('[ConversationView] LLM service retrieved successfully');
+        console.log('[ConversationView] ✓ LLM service retrieved successfully');
+        console.log('[ConversationView] Using model:', selectedModel?.name || 'default');
+        console.log('[ConversationView] Provider:', selectedModel?.provider || 'default');
+        console.log('[ConversationView] All conversations will use this configured LLM service');
         setShowConfigNotice(false);
       } catch (err) {
-        console.warn('[ConversationView] LLM service not initialized, using simulated response:', err);
+        console.warn('[ConversationView] ✗ LLM service not initialized, using simulated response:', err);
+        console.warn('[ConversationView] Configure API keys in Settings to enable real conversations');
         llmService = null;
         setShowConfigNotice(true);
       }
@@ -271,6 +276,19 @@ export const ConversationView: React.FC = () => {
 
   return (
     <div className="h-full flex flex-col bg-gray-900">
+      {/* Model Status Banner */}
+      {selectedModel && !showConfigNotice && (
+        <div className="bg-blue-900/20 border-b border-blue-700/30 px-4 py-2">
+          <div className="flex items-center gap-2 text-xs">
+            <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+            <span className="text-blue-200">
+              Using <span className="font-semibold">{selectedModel.name}</span>
+              {' '}({selectedModel.provider})
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* Configuration Notice */}
       {showConfigNotice && (
         <div className="bg-yellow-900/30 border-b border-yellow-700 p-4">
