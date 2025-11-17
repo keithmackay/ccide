@@ -6,10 +6,17 @@
 import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { getSettingsService } from '../services/SettingsService';
+import { getAccountService } from '../services/AccountService';
+import { clearConfigCache } from '../services/SettingsHelper';
 import { StoredLLMConfig, Settings } from '../types/models';
 import { useAppStore } from '../stores/appStore';
 import { usePasswordSession } from '../hooks/usePasswordSession';
 import { LLMModel } from '../types/ui';
+import AddProviderDialog from './Settings/AddProviderDialog';
+import ConfirmDeleteProviderDialog from './Settings/ConfirmDeleteProviderDialog';
+import ChangeDefaultModelDialog from './Settings/ChangeDefaultModelDialog';
+import ChangePasswordDialog from './Settings/ChangePasswordDialog';
+import DeleteAccountDialog from './Settings/DeleteAccountDialog';
 
 interface SettingsPageProps {
   onClose?: () => void;
@@ -51,14 +58,31 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onClose }) => {
   });
   const [availableModels, setLocalAvailableModels] = useState<{ id: string; name: string }[]>([]);
 
+  // Dialog state
+  const [showAddProvider, setShowAddProvider] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{id: string, provider: string, model: string} | null>(null);
+  const [changeDefaultTarget, setChangeDefaultTarget] = useState<{id: string, provider: string, model: string} | null>(null);
+  const [providers, setProviders] = useState<StoredLLMConfig[]>([]);
+  const [currentUsername, setCurrentUsername] = useState('');
+  const [showChangePassword, setShowChangePassword] = useState(false);
+  const [showDeleteAccount, setShowDeleteAccount] = useState(false);
+
   const settingsService = getSettingsService();
+  const accountService = getAccountService();
   const setAppAvailableModels = useAppStore((state) => (state as any).setAvailableModels);
   const setSelectedModel = useAppStore((state) => state.setSelectedModel);
-  const { setPassword: setSessionPassword } = usePasswordSession();
+  const { password: sessionPassword, setPassword: setSessionPassword } = usePasswordSession();
 
   useEffect(() => {
     loadSettings();
+    loadUsername();
   }, []);
+
+  useEffect(() => {
+    if (sessionPassword) {
+      loadProviders();
+    }
+  }, [sessionPassword]);
 
   // Update available models when provider changes
   useEffect(() => {
@@ -214,6 +238,184 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onClose }) => {
     }
   };
 
+  const handleChangePassword = async (oldPassword: string, newPassword: string) => {
+    try {
+      await accountService.changePassword(currentUsername, oldPassword, newPassword);
+
+      // Update session with new password
+      setSessionPassword(newPassword, true);
+
+      setShowChangePassword(false);
+      setSuccess('Password changed successfully');
+
+      // Note: User will need to re-encrypt settings with new password if they want to
+      // For now, existing encrypted data remains with old password
+    } catch (error) {
+      console.error('Failed to change password:', error);
+      throw error; // Re-throw to let dialog show error
+    }
+  };
+
+  const handleDeleteAccount = async (username: string, password: string) => {
+    try {
+      await accountService.deleteAccount(username, password);
+
+      // Clear session
+      setSessionPassword('', false);
+
+      // Clear state
+      setSettings(null);
+      setProviders([]);
+      setIsUnlocked(false);
+      setIsPasswordSet(false);
+
+      setShowDeleteAccount(false);
+      setSuccess('Account deleted successfully. All data has been removed.');
+
+      // Reload page after a delay
+      setTimeout(() => {
+        window.location.reload();
+      }, 2000);
+    } catch (error) {
+      console.error('Failed to delete account:', error);
+      throw error; // Re-throw to let dialog show error
+    }
+  };
+
+  const loadUsername = async () => {
+    const account = await accountService.getAccount();
+    if (account) {
+      setCurrentUsername(account.username);
+    }
+  };
+
+  const loadProviders = async () => {
+    if (!sessionPassword) return;
+
+    try {
+      const configs = await settingsService.getLLMConfigs(sessionPassword);
+      setProviders(configs);
+    } catch (error) {
+      console.error('Failed to load providers:', error);
+    }
+  };
+
+  const handleAddProvider = async (config: {
+    username: string;
+    password: string;
+    provider: string;
+    apiKey: string;
+    modelName: string;
+    isDefault: boolean;
+    endpoint?: string;
+  }) => {
+    try {
+      // Verify credentials
+      const loginResult = await accountService.login(config.username, config.password);
+      if (!loginResult) {
+        throw new Error('Invalid username or password');
+      }
+
+      // Store password in session
+      setSessionPassword(config.password, true);
+
+      // Generate unique ID
+      const id = crypto.randomUUID();
+
+      // Create config
+      const newConfig: StoredLLMConfig = {
+        id,
+        provider: config.provider as any,
+        modelName: config.modelName,
+        apiKey: config.apiKey,
+        isDefault: config.isDefault,
+        endpoint: config.endpoint,
+      };
+
+      // Add to settings
+      await settingsService.addLLMConfig(newConfig, config.password);
+
+      // Clear config cache
+      clearConfigCache();
+
+      // Reload providers
+      await loadProviders();
+
+      setShowAddProvider(false);
+      setSuccess('Provider added successfully');
+    } catch (error) {
+      console.error('Failed to add provider:', error);
+      throw error;
+    }
+  };
+
+  const handleDeleteProvider = async (username: string, password: string) => {
+    if (!deleteTarget) return;
+
+    try {
+      // Verify credentials
+      const verified = await accountService.verifyPasswordOnly(password);
+      if (!verified) {
+        throw new Error('Invalid password');
+      }
+
+      // Delete provider
+      await settingsService.removeLLMConfig(deleteTarget.id, password);
+
+      // Clear config cache
+      clearConfigCache();
+
+      // Reload providers
+      await loadProviders();
+
+      // Check if deleted was default
+      const wasDefault = providers.find(p => p.id === deleteTarget.id)?.isDefault;
+      if (wasDefault && providers.length > 1) {
+        setSuccess('Default provider deleted. Please select a new default.');
+      } else {
+        setSuccess('Provider deleted successfully');
+      }
+
+      setDeleteTarget(null);
+    } catch (error) {
+      console.error('Failed to delete provider:', error);
+      throw error;
+    }
+  };
+
+  const handleChangeDefault = async (username: string, password: string) => {
+    if (!changeDefaultTarget) return;
+
+    try {
+      // Verify credentials
+      const verified = await accountService.verifyPasswordOnly(password);
+      if (!verified) {
+        throw new Error('Invalid password');
+      }
+
+      // Update isDefault flags
+      const updatedProviders = providers.map(p => ({
+        ...p,
+        isDefault: p.id === changeDefaultTarget.id,
+      }));
+
+      // Save all configs
+      await settingsService.saveLLMConfigs(updatedProviders, password);
+
+      // Clear config cache
+      clearConfigCache();
+
+      // Reload providers
+      await loadProviders();
+
+      setChangeDefaultTarget(null);
+      setSuccess('Default model changed successfully');
+    } catch (error) {
+      console.error('Failed to change default:', error);
+      throw error;
+    }
+  };
+
   const renderAccountSection = () => (
     <div className="settings-section">
       <h2 className="text-gray-100 text-xl font-semibold mb-4">Account Settings</h2>
@@ -253,23 +455,22 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onClose }) => {
       )}
 
       {isUnlocked && (
-        <div className="account-info bg-gray-800 p-4 rounded-lg border border-gray-700">
-          <h3 className="text-gray-200 text-lg font-medium mb-2">Account Information</h3>
-          <p className="text-gray-300 mb-4">Settings are encrypted and stored locally in your browser.</p>
-          <button
-            onClick={async () => {
-              const exported = await settingsService.exportSettings();
-              const blob = new Blob([exported], { type: 'application/json' });
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement('a');
-              a.href = url;
-              a.download = 'ccide-settings.json';
-              a.click();
-            }}
-            className="btn btn-secondary"
-          >
-            Export Settings
-          </button>
+        <div className="account-actions bg-gray-800 p-4 rounded-lg border border-gray-700">
+          <h3 className="text-gray-200 text-lg font-medium mb-4">Account Management</h3>
+          <div className="flex flex-col gap-3">
+            <button
+              onClick={() => setShowChangePassword(true)}
+              className="btn btn-primary"
+            >
+              Change Password
+            </button>
+            <button
+              onClick={() => setShowDeleteAccount(true)}
+              className="btn btn-danger"
+            >
+              Delete Account
+            </button>
+          </div>
         </div>
       )}
     </div>
@@ -287,164 +488,55 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onClose }) => {
 
       {isUnlocked && (
         <>
-          <div className="llm-configs mb-6">
-            <h3 className="text-gray-200 text-lg font-medium mb-3">Configured Models</h3>
-            {settings?.llmConfigs && settings.llmConfigs.length > 0 ? (
-              <ul className="config-list space-y-2">
-                {settings.llmConfigs.map((config) => (
-                  <li key={config.id} className="config-item bg-gray-800 border-gray-700">
-                    <div className="config-info">
-                      <strong className="text-gray-100">{config.modelName}</strong>
-                      <span className="provider text-gray-400">{config.provider}</span>
-                      {config.isDefault && <span className="badge">Default</span>}
+          <button
+            onClick={() => setShowAddProvider(true)}
+            className="btn btn-primary mb-6"
+          >
+            Add Provider
+          </button>
+
+          <div className="provider-list space-y-3">
+            {providers && providers.length > 0 ? (
+              providers.map(provider => (
+                <div key={provider.id} className="provider-card bg-gray-800 p-4 rounded-lg border border-gray-700 flex items-center justify-between">
+                  <div className="provider-info flex-1">
+                    <div className="flex items-center gap-3">
+                      <h3 className="text-gray-100 font-semibold">{provider.provider}</h3>
+                      {provider.isDefault && <span className="badge bg-green-600 text-white px-2 py-1 rounded text-xs">Default</span>}
                     </div>
+                    <p className="text-gray-300 text-sm mt-1">{provider.modelName}</p>
+                  </div>
+                  <div className="provider-actions flex gap-2">
+                    {!provider.isDefault && (
+                      <button
+                        onClick={() => setChangeDefaultTarget({
+                          id: provider.id,
+                          provider: provider.provider,
+                          model: provider.modelName,
+                        })}
+                        className="btn btn-secondary btn-small"
+                      >
+                        Set as Default
+                      </button>
+                    )}
                     <button
-                      onClick={() => handleRemoveLLMConfig(config.id)}
+                      onClick={() => setDeleteTarget({
+                        id: provider.id,
+                        provider: provider.provider,
+                        model: provider.modelName,
+                      })}
                       className="btn btn-danger btn-small"
+                      title="Delete provider"
                     >
-                      Remove
+                      🗑️
                     </button>
-                  </li>
-                ))}
-              </ul>
+                  </div>
+                </div>
+              ))
             ) : (
-              <p className="text-gray-300">No LLM configurations added yet.</p>
+              <p className="text-gray-300">No providers configured yet. Click "Add Provider" to get started.</p>
             )}
           </div>
-
-          {!showAddLLM && (
-            <button
-              onClick={() => setShowAddLLM(true)}
-              className="btn btn-primary"
-            >
-              Add LLM Configuration
-            </button>
-          )}
-
-          {showAddLLM && (
-            <div className="add-llm-form bg-gray-800 p-4 rounded-lg border border-gray-700">
-              <h3 className="text-gray-200 text-lg font-medium mb-4">Add LLM Configuration</h3>
-
-              <label className="text-gray-200">
-                Provider:
-                <select
-                  value={newLLMConfig.provider}
-                  onChange={(e) =>
-                    setNewLLMConfig({ ...newLLMConfig, provider: e.target.value as any })
-                  }
-                  className="input-field bg-gray-900 text-gray-100 border-gray-600"
-                >
-                  <option value="anthropic">Anthropic (Claude)</option>
-                  <option value="openai">OpenAI</option>
-                  <option value="custom">Custom</option>
-                </select>
-              </label>
-
-              <label className="text-gray-200">
-                Default Model:
-                {newLLMConfig.provider !== 'custom' ? (
-                  <select
-                    value={newLLMConfig.modelName || ''}
-                    onChange={(e) =>
-                      setNewLLMConfig({ ...newLLMConfig, modelName: e.target.value })
-                    }
-                    className="input-field bg-gray-900 text-gray-100 border-gray-600"
-                  >
-                    <option value="">Select a model</option>
-                    {availableModels.map((model) => (
-                      <option key={model.id} value={model.id}>
-                        {model.name}
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <input
-                    type="text"
-                    value={newLLMConfig.modelName || ''}
-                    onChange={(e) =>
-                      setNewLLMConfig({ ...newLLMConfig, modelName: e.target.value })
-                    }
-                    placeholder="Enter custom model name"
-                    className="input-field bg-gray-900 text-gray-100 border-gray-600"
-                  />
-                )}
-              </label>
-
-              <label className="text-gray-200">
-                API Key:
-                <input
-                  type="password"
-                  value={newLLMConfig.apiKey || ''}
-                  onChange={(e) =>
-                    setNewLLMConfig({ ...newLLMConfig, apiKey: e.target.value })
-                  }
-                  placeholder="Enter API key"
-                  className="input-field bg-gray-900 text-gray-100 border-gray-600"
-                />
-              </label>
-
-              <label className="text-gray-200">
-                Max Tokens (optional):
-                <input
-                  type="number"
-                  value={newLLMConfig.maxTokens || ''}
-                  onChange={(e) =>
-                    setNewLLMConfig({
-                      ...newLLMConfig,
-                      maxTokens: parseInt(e.target.value) || undefined,
-                    })
-                  }
-                  placeholder="e.g., 4096"
-                  className="input-field bg-gray-900 text-gray-100 border-gray-600"
-                />
-              </label>
-
-              <label className="text-gray-200">
-                Temperature (optional):
-                <input
-                  type="number"
-                  step="0.1"
-                  min="0"
-                  max="2"
-                  value={newLLMConfig.temperature || ''}
-                  onChange={(e) =>
-                    setNewLLMConfig({
-                      ...newLLMConfig,
-                      temperature: parseFloat(e.target.value) || undefined,
-                    })
-                  }
-                  placeholder="e.g., 0.7"
-                  className="input-field bg-gray-900 text-gray-100 border-gray-600"
-                />
-              </label>
-
-              <label className="checkbox-label text-gray-200">
-                <input
-                  type="checkbox"
-                  checked={newLLMConfig.isDefault || false}
-                  onChange={(e) =>
-                    setNewLLMConfig({ ...newLLMConfig, isDefault: e.target.checked })
-                  }
-                />
-                Set as default model
-              </label>
-
-              <div className="form-actions">
-                <button onClick={handleAddLLMConfig} className="btn btn-primary">
-                  Add Configuration
-                </button>
-                <button
-                  onClick={() => {
-                    setShowAddLLM(false);
-                    setNewLLMConfig({ provider: 'anthropic', isDefault: false });
-                  }}
-                  className="btn btn-secondary"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          )}
         </>
       )}
     </div>
@@ -701,6 +793,52 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onClose }) => {
           line-height: 1.8;
         }
       `}</style>
+
+      {/* Dialogs */}
+      <AddProviderDialog
+        open={showAddProvider}
+        onClose={() => setShowAddProvider(false)}
+        onAdd={handleAddProvider}
+        username={currentUsername}
+      />
+
+      <ConfirmDeleteProviderDialog
+        open={deleteTarget !== null}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleDeleteProvider}
+        providerName={deleteTarget?.provider || ''}
+        modelName={deleteTarget?.model || ''}
+      />
+
+      <ChangeDefaultModelDialog
+        open={changeDefaultTarget !== null}
+        onClose={() => setChangeDefaultTarget(null)}
+        onConfirm={handleChangeDefault}
+        currentDefault={
+          providers.find(p => p.isDefault)
+            ? { provider: providers.find(p => p.isDefault)!.provider, model: providers.find(p => p.isDefault)!.modelName }
+            : { provider: '', model: '' }
+        }
+        newDefault={
+          changeDefaultTarget
+            ? { provider: changeDefaultTarget.provider, model: changeDefaultTarget.model }
+            : { provider: '', model: '' }
+        }
+      />
+
+      <ChangePasswordDialog
+        open={showChangePassword}
+        onClose={() => setShowChangePassword(false)}
+        onConfirm={handleChangePassword}
+        username={currentUsername}
+      />
+
+      <DeleteAccountDialog
+        open={showDeleteAccount}
+        onClose={() => setShowDeleteAccount(false)}
+        onConfirm={handleDeleteAccount}
+        username={currentUsername}
+      />
     </div>
   );
 };
