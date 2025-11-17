@@ -133,31 +133,119 @@ export function detectPhaseCompletion(
 }
 
 /**
- * Extracts deliverables mentioned in a message
+ * Extracts deliverables mentioned in a message with their content
  */
 export function extractDeliverables(message: string): PhaseDeliverable[] {
   const deliverables: PhaseDeliverable[] = [];
   const foundPaths = new Set<string>();
 
+  // Extract mermaid diagrams
+  const mermaidPattern = /```mermaid\s*\n([\s\S]*?)```/gi;
+  let mermaidMatch;
+  let mermaidCount = 0;
+  while ((mermaidMatch = mermaidPattern.exec(message)) !== null) {
+    mermaidCount++;
+    deliverables.push({
+      name: `Diagram ${mermaidCount}`,
+      path: `diagram-${mermaidCount}`,
+      type: 'diagram',
+      preview: mermaidMatch[0],
+    });
+  }
+
+  // Extract markdown files with content
+  // Pattern 1: ## filename.md followed by ```markdown content ```
+  const fileWithBlockPattern = /##\s*([a-zA-Z0-9_/-]+\.md)\s*\n+```(?:markdown)?\s*\n([\s\S]*?)```/gi;
+  let fileBlockMatch;
+  while ((fileBlockMatch = fileWithBlockPattern.exec(message)) !== null) {
+    const path = fileBlockMatch[1];
+    const content = fileBlockMatch[2].trim();
+
+    if (foundPaths.has(path)) continue;
+    foundPaths.add(path);
+
+    deliverables.push({
+      name: path.split('/').pop() || path,
+      path,
+      type: 'document',
+      preview: content,
+    });
+  }
+
+  // Pattern 2: Created/Wrote/Generated file: filename.md followed by code block
+  const createdFilePattern = /(?:created|wrote|generated|saved)\s+(?:file:?\s+)?[`"]?([a-zA-Z0-9_/-]+\.md)[`"]?\s*\n+```(?:markdown)?\s*\n([\s\S]*?)```/gi;
+  let createdMatch;
+  while ((createdMatch = createdFilePattern.exec(message)) !== null) {
+    const path = createdMatch[1];
+    const content = createdMatch[2].trim();
+
+    if (foundPaths.has(path)) continue;
+    foundPaths.add(path);
+
+    deliverables.push({
+      name: path.split('/').pop() || path,
+      path,
+      type: 'document',
+      preview: content,
+    });
+  }
+
+  // Pattern 3: Standalone markdown code blocks preceded by filename mention
+  const standaloneBlockPattern = /([a-zA-Z0-9_/-]+\.md)[\s\S]{0,100}?```(?:markdown)?\s*\n([\s\S]*?)```/gi;
+  let standaloneMatch;
+  while ((standaloneMatch = standaloneBlockPattern.exec(message)) !== null) {
+    const path = standaloneMatch[1];
+    const content = standaloneMatch[2].trim();
+
+    // Must have substantial content (more than 50 chars)
+    if (content.length < 50) continue;
+
+    if (foundPaths.has(path)) continue;
+    foundPaths.add(path);
+
+    deliverables.push({
+      name: path.split('/').pop() || path,
+      path,
+      type: 'document',
+      preview: content,
+    });
+  }
+
+  // Extract code files with content
+  const codeFilePattern = /(?:created|wrote|generated|saved)\s+(?:file:?\s+)?[`"]?([a-zA-Z0-9_/-]+\.(ts|tsx|js|jsx|html|css))[`"]?\s*\n+```(?:\w+)?\s*\n([\s\S]*?)```/gi;
+  let codeMatch;
+  while ((codeMatch = codeFilePattern.exec(message)) !== null) {
+    const path = codeMatch[1];
+    const content = codeMatch[3].trim();
+
+    if (foundPaths.has(path)) continue;
+    foundPaths.add(path);
+
+    deliverables.push({
+      name: path.split('/').pop() || path,
+      path,
+      type: 'code',
+      preview: content,
+    });
+  }
+
+  // Fallback: look for any file paths mentioned (without content)
   for (const { pattern, type } of DELIVERABLE_PATTERNS) {
+    if (type === 'diagram') continue; // Already handled
+
     const matches = message.matchAll(pattern);
     for (const match of matches) {
       const path = match[0];
 
-      // Avoid duplicates
       if (foundPaths.has(path)) continue;
       foundPaths.add(path);
 
-      // Extract name from path
-      const name = type === 'diagram'
-        ? 'Mermaid Diagram'
-        : path.split('/').pop() || path;
-
+      const name = path.split('/').pop() || path;
       deliverables.push({
         name,
-        path: type === 'diagram' ? `diagram-${deliverables.length}` : path,
+        path,
         type,
-        preview: type === 'diagram' ? match[0] : undefined,
+        preview: undefined, // No content available
       });
     }
   }
