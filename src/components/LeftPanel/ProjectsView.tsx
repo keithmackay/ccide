@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Plus, Archive, ArchiveRestore, ChevronDown, ChevronRight } from 'lucide-react';
 import { useAppStore } from '../../stores/appStore';
+import { getOrchestratorInitialMessage } from '../../services/OrchestratorService';
 
 export const ProjectsView: React.FC = () => {
   const activeProjects = useAppStore((state) => state.activeProjects);
@@ -9,6 +10,7 @@ export const ProjectsView: React.FC = () => {
   const archiveProject = useAppStore((state) => state.archiveProject);
   const unarchiveProject = useAppStore((state) => state.unarchiveProject);
   const addProject = useAppStore((state) => state.addProject);
+  const addMessage = useAppStore((state) => state.addMessage);
 
   const [isActiveExpanded, setIsActiveExpanded] = useState(true);
   const [isArchivedExpanded, setIsArchivedExpanded] = useState(false);
@@ -28,6 +30,11 @@ export const ProjectsView: React.FC = () => {
 
     addProject(newProject);
     setActiveProject(newProject);
+
+    // Initialize orchestrator workflow
+    // Add the initial orchestrator message to start the workflow
+    const orchestratorMessage = getOrchestratorInitialMessage(newProject.id, name);
+    addMessage(orchestratorMessage);
   };
 
   const handleProjectClick = (project: typeof activeProjects[0]) => {
