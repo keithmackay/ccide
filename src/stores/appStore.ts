@@ -92,6 +92,13 @@ export const useAppStore = create<AppState>((set) => ({
       messages: [...state.messages, message],
     })),
 
+  updateMessage: (messageId: string, updates: Partial<Message>) =>
+    set((state) => ({
+      messages: state.messages.map((msg) =>
+        msg.id === messageId ? { ...msg, ...updates } : msg
+      ),
+    })),
+
   setMessages: (messages: Message[]) =>
     set({ messages }),
 

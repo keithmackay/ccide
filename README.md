@@ -13,9 +13,17 @@
 - **Two-Panel UI**: Split interface with project management, conversation, and file browser
 - **Project Management**: Create, manage, and archive projects with comprehensive metadata
 - **Multi-Agent Coordination**: Orchestrate specialized AI agents for different development tasks
-- **Conversation History**: Full analytics and tracking of all LLM interactions
+- **LLM Conversation Interface**: Interactive chat with Claude API and OpenAI with streaming support
+- **Conversation History**: Full analytics and tracking of all LLM interactions with search and export
 - **File Browser**: Native file system access (when available) with intelligent file navigation
 - **Usage Analytics**: Track token usage, costs, and model performance across projects
+
+### LLM Integration
+- **Multi-Provider Support**: Works with Anthropic Claude and OpenAI GPT models
+- **Streaming Responses**: Real-time streaming of LLM responses for better UX
+- **Conversation Management**: Save, search, and export conversation history
+- **Token Tracking**: Automatic token counting and usage analytics
+- **Error Handling**: Graceful error handling with retry capabilities
 
 ### Security & Privacy
 - **Client-Side Encryption**: All sensitive data encrypted using AES-256
@@ -49,12 +57,38 @@
 
 - Node.js >= 18.0.0
 - npm >= 9.0.0
+- API Key from Anthropic (Claude) or OpenAI (GPT)
 
 ### Installation
 
 ```bash
 npm install
 ```
+
+### Configuration
+
+#### Setting up LLM API Keys
+
+1. Navigate to Settings in the application
+2. Add your LLM configuration:
+   - **Anthropic Claude**: Get your API key from [console.anthropic.com](https://console.anthropic.com)
+   - **OpenAI GPT**: Get your API key from [platform.openai.com](https://platform.openai.com)
+
+3. Configure your LLM settings:
+   ```typescript
+   {
+     provider: 'anthropic', // or 'openai'
+     model: 'claude-sonnet-4-5-20250929', // or 'gpt-4'
+     apiKey: 'your-api-key-here',
+     maxTokens: 4096,
+     temperature: 0.7
+   }
+   ```
+
+4. Set a master password to encrypt your API keys locally
+5. Your keys are encrypted using AES-256 and stored only in your browser's IndexedDB
+
+**Security Note**: Your API keys never leave your browser and are encrypted at rest.
 
 ### Development
 

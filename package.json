@@ -1,6 +1,6 @@
 {
   "name": "ccide",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Claude Code IDE - A web-based IDE for LLMs with agent coordination and project management",
   "type": "module",
   "author": "CCIDE Team",
@@ -69,6 +69,7 @@
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-react-refresh": "^0.4.6",
     "eventemitter3": "^5.0.1",
+    "fake-indexeddb": "^6.2.5",
     "jsdom": "^27.2.0",
     "postcss": "^8.4.38",
     "prettier": "^3.2.5",

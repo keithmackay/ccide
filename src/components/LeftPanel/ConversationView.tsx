@@ -1,28 +1,47 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Send } from 'lucide-react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { Send, StopCircle } from 'lucide-react';
 import { useAppStore } from '../../stores/appStore';
 import { cn } from '../../utils/cn';
+import { getLLMService } from '../../services/LLMService';
+import { LLMMessage } from '../../types/index';
 
 export const ConversationView: React.FC = () => {
   const messages = useAppStore((state) => state.messages);
   const addMessage = useAppStore((state) => state.addMessage);
+  const updateMessage = useAppStore((state) => state.updateMessage);
   const activeProject = useAppStore((state) => state.activeProject);
 
   const [input, setInput] = useState('');
+  const [isStreaming, setIsStreaming] = useState(false);
+  const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const streamingRef = useRef(false);
 
-  const scrollToBottom = () => {
+  const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
+  }, []);
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages]);
+  }, [messages, scrollToBottom]);
 
-  const handleSend = () => {
+  // Auto-scroll during streaming
+  useEffect(() => {
+    if (isStreaming) {
+      scrollToBottom();
+    }
+  }, [isStreaming, messages, scrollToBottom]);
+
+  const handleStopStreaming = useCallback(() => {
+    streamingRef.current = false;
+    setIsStreaming(false);
+    setStreamingMessageId(null);
+  }, []);
+
+  const handleSendWithStreaming = async () => {
     if (!input.trim() || !activeProject) return;
 
-    const newMessage = {
+    const userMessage = {
       id: `msg-${Date.now()}`,
       role: 'user' as const,
       content: input,
@@ -30,26 +49,137 @@ export const ConversationView: React.FC = () => {
       projectId: activeProject.id,
     };
 
-    addMessage(newMessage);
+    addMessage(userMessage);
+    const currentInput = input;
     setInput('');
+    setIsStreaming(true);
+    streamingRef.current = true;
 
-    // Simulate assistant response (would be replaced with actual LLM call)
-    setTimeout(() => {
+    try {
+      // Try to get LLM service - fallback to simulation if not configured
+      let llmService;
+      try {
+        llmService = getLLMService();
+      } catch (err) {
+        console.warn('LLM service not initialized, using simulated response');
+        llmService = null;
+      }
+
+      // Create assistant message for streaming
+      const assistantMessageId = `msg-${Date.now()}`;
       const assistantMessage = {
-        id: `msg-${Date.now()}`,
+        id: assistantMessageId,
         role: 'assistant' as const,
-        content: 'This is a simulated response. Integration with LLM will be added by Agent 3.',
+        content: '',
         timestamp: new Date().toISOString(),
         projectId: activeProject.id,
       };
       addMessage(assistantMessage);
-    }, 1000);
+      setStreamingMessageId(assistantMessageId);
+
+      if (llmService) {
+        // Real streaming from LLM service
+        const projectMessages = messages
+          .filter(msg => msg.projectId === activeProject.id)
+          .map((msg): LLMMessage => ({
+            role: msg.role,
+            content: msg.content,
+          }));
+
+        projectMessages.push({
+          role: 'user',
+          content: currentInput,
+        });
+
+        let accumulatedContent = '';
+        let chunkBuffer = '';
+        let lastUpdateTime = Date.now();
+        const BATCH_INTERVAL = 50; // ms - batch updates for performance
+
+        for await (const chunk of llmService.streamRequest({
+          messages: projectMessages,
+          systemPrompt: 'You are a helpful AI assistant integrated into CCIDE, a code IDE.',
+        })) {
+          // Check if streaming was cancelled
+          if (!streamingRef.current) {
+            break;
+          }
+
+          chunkBuffer += chunk;
+          accumulatedContent += chunk;
+
+          // Batch updates to avoid excessive re-renders
+          const now = Date.now();
+          if (now - lastUpdateTime >= BATCH_INTERVAL || chunkBuffer.length > 50) {
+            updateMessage(assistantMessageId, { content: accumulatedContent });
+            chunkBuffer = '';
+            lastUpdateTime = now;
+
+            // Use requestAnimationFrame for smoother scrolling
+            requestAnimationFrame(() => {
+              if (streamingRef.current) {
+                scrollToBottom();
+              }
+            });
+          }
+        }
+
+        // Final update with any remaining content
+        if (chunkBuffer) {
+          updateMessage(assistantMessageId, { content: accumulatedContent });
+        }
+      } else {
+        // Simulated streaming response
+        const simulatedResponse = 'This is a simulated streaming response. The LLM service is not configured yet. Configure your API keys in Settings to enable real-time AI responses.';
+        let currentIndex = 0;
+
+        const streamInterval = setInterval(() => {
+          if (!streamingRef.current || currentIndex >= simulatedResponse.length) {
+            clearInterval(streamInterval);
+            return;
+          }
+
+          // Stream 1-3 characters at a time for realistic effect
+          const chunkSize = Math.floor(Math.random() * 3) + 1;
+          currentIndex += chunkSize;
+
+          updateMessage(assistantMessageId, {
+            content: simulatedResponse.slice(0, currentIndex),
+          });
+
+          requestAnimationFrame(() => {
+            if (streamingRef.current) {
+              scrollToBottom();
+            }
+          });
+        }, 30);
+      }
+
+    } catch (err) {
+      console.error('Error streaming message:', err);
+
+      const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred';
+
+      // Add error message to chat
+      const errorChatMessage = {
+        id: `msg-${Date.now()}`,
+        role: 'assistant' as const,
+        content: `Error: ${errorMessage}`,
+        timestamp: new Date().toISOString(),
+        projectId: activeProject.id,
+      };
+      addMessage(errorChatMessage);
+    } finally {
+      streamingRef.current = false;
+      setIsStreaming(false);
+      setStreamingMessageId(null);
+    }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      handleSend();
+      handleSendWithStreaming();
     }
   };
 
@@ -85,7 +215,12 @@ export const ConversationView: React.FC = () => {
                     : 'bg-gray-800 text-gray-200'
                 )}
               >
-                <div className="text-sm whitespace-pre-wrap">{message.content}</div>
+                <div className="text-sm whitespace-pre-wrap">
+                  {message.content}
+                  {isStreaming && message.id === streamingMessageId && (
+                    <span className="inline-block w-2 h-4 ml-1 bg-blue-500 animate-pulse" />
+                  )}
+                </div>
               </div>
               <div className="text-xs text-gray-600 px-2">
                 {new Date(message.timestamp).toLocaleTimeString()}
@@ -104,16 +239,29 @@ export const ConversationView: React.FC = () => {
             onChange={(e) => setInput(e.target.value)}
             onKeyPress={handleKeyPress}
             placeholder="Type your message..."
-            className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+            disabled={isStreaming}
+            className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none disabled:opacity-50 disabled:cursor-not-allowed"
             rows={3}
           />
-          <button
-            onClick={handleSend}
-            disabled={!input.trim()}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
-          >
-            <Send className="w-5 h-5" />
-          </button>
+          {isStreaming ? (
+            <button
+              onClick={handleStopStreaming}
+              className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors flex items-center gap-2"
+              title="Stop generating"
+            >
+              <StopCircle className="w-5 h-5" />
+              <span className="text-xs">Stop</span>
+            </button>
+          ) : (
+            <button
+              onClick={handleSendWithStreaming}
+              disabled={!input.trim()}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
+              title="Send message"
+            >
+              <Send className="w-5 h-5" />
+            </button>
+          )}
         </div>
       </div>
     </div>
