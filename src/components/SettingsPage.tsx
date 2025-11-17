@@ -15,6 +15,8 @@ import { LLMModel } from '../types/ui';
 import AddProviderDialog from './Settings/AddProviderDialog';
 import ConfirmDeleteProviderDialog from './Settings/ConfirmDeleteProviderDialog';
 import ChangeDefaultModelDialog from './Settings/ChangeDefaultModelDialog';
+import ChangePasswordDialog from './Settings/ChangePasswordDialog';
+import DeleteAccountDialog from './Settings/DeleteAccountDialog';
 
 interface SettingsPageProps {
   onClose?: () => void;
@@ -62,6 +64,8 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onClose }) => {
   const [changeDefaultTarget, setChangeDefaultTarget] = useState<{id: string, provider: string, model: string} | null>(null);
   const [providers, setProviders] = useState<StoredLLMConfig[]>([]);
   const [currentUsername, setCurrentUsername] = useState('');
+  const [showChangePassword, setShowChangePassword] = useState(false);
+  const [showDeleteAccount, setShowDeleteAccount] = useState(false);
 
   const settingsService = getSettingsService();
   const accountService = getAccountService();
@@ -234,15 +238,47 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onClose }) => {
     }
   };
 
-  const handleChangePassword = () => {
-    // TODO: Implement change password dialog
-    alert('Change password dialog will be implemented in future enhancement');
+  const handleChangePassword = async (oldPassword: string, newPassword: string) => {
+    try {
+      await accountService.changePassword(currentUsername, oldPassword, newPassword);
+
+      // Update session with new password
+      setSessionPassword(newPassword, true);
+
+      setShowChangePassword(false);
+      setSuccess('Password changed successfully');
+
+      // Note: User will need to re-encrypt settings with new password if they want to
+      // For now, existing encrypted data remains with old password
+    } catch (error) {
+      console.error('Failed to change password:', error);
+      throw error; // Re-throw to let dialog show error
+    }
   };
 
-  const handleDeleteAccount = () => {
-    // TODO: Implement delete account dialog
-    if (confirm('Are you sure you want to delete your account? This will remove all data permanently.')) {
-      alert('Delete account dialog will be implemented in future enhancement');
+  const handleDeleteAccount = async (username: string, password: string) => {
+    try {
+      await accountService.deleteAccount(username, password);
+
+      // Clear session
+      setSessionPassword('', false);
+
+      // Clear state
+      setSettings(null);
+      setProviders([]);
+      setIsUnlocked(false);
+      setIsPasswordSet(false);
+
+      setShowDeleteAccount(false);
+      setSuccess('Account deleted successfully. All data has been removed.');
+
+      // Reload page after a delay
+      setTimeout(() => {
+        window.location.reload();
+      }, 2000);
+    } catch (error) {
+      console.error('Failed to delete account:', error);
+      throw error; // Re-throw to let dialog show error
     }
   };
 
@@ -423,13 +459,13 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onClose }) => {
           <h3 className="text-gray-200 text-lg font-medium mb-4">Account Management</h3>
           <div className="flex flex-col gap-3">
             <button
-              onClick={handleChangePassword}
+              onClick={() => setShowChangePassword(true)}
               className="btn btn-primary"
             >
               Change Password
             </button>
             <button
-              onClick={handleDeleteAccount}
+              onClick={() => setShowDeleteAccount(true)}
               className="btn btn-danger"
             >
               Delete Account
@@ -788,6 +824,20 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onClose }) => {
             ? { provider: changeDefaultTarget.provider, model: changeDefaultTarget.model }
             : { provider: '', model: '' }
         }
+      />
+
+      <ChangePasswordDialog
+        open={showChangePassword}
+        onClose={() => setShowChangePassword(false)}
+        onConfirm={handleChangePassword}
+        username={currentUsername}
+      />
+
+      <DeleteAccountDialog
+        open={showDeleteAccount}
+        onClose={() => setShowDeleteAccount(false)}
+        onConfirm={handleDeleteAccount}
+        username={currentUsername}
       />
     </div>
   );
