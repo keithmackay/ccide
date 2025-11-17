@@ -8,6 +8,8 @@ import { X } from 'lucide-react';
 import { getSettingsService } from '../services/SettingsService';
 import { StoredLLMConfig, Settings } from '../types/models';
 import { useAppStore } from '../stores/appStore';
+import { usePasswordSession } from '../hooks/usePasswordSession';
+import { LLMModel } from '../types/ui';
 
 interface SettingsPageProps {
   onClose?: () => void;
@@ -47,10 +49,12 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onClose }) => {
     provider: 'anthropic',
     isDefault: false,
   });
-  const [availableModels, setAvailableModels] = useState<{ id: string; name: string }[]>([]);
+  const [availableModels, setLocalAvailableModels] = useState<{ id: string; name: string }[]>([]);
 
   const settingsService = getSettingsService();
-  const setAppAvailableModels = useAppStore((state) => state.setSelectedModel);
+  const setAppAvailableModels = useAppStore((state) => (state as any).setAvailableModels);
+  const setSelectedModel = useAppStore((state) => state.setSelectedModel);
+  const { password: sessionPassword, setPassword: setSessionPassword } = usePasswordSession();
 
   useEffect(() => {
     loadSettings();
@@ -59,7 +63,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onClose }) => {
   // Update available models when provider changes
   useEffect(() => {
     if (newLLMConfig.provider) {
-      setAvailableModels(PROVIDER_MODELS[newLLMConfig.provider] || []);
+      setLocalAvailableModels(PROVIDER_MODELS[newLLMConfig.provider] || []);
       // Reset model selection when provider changes
       setNewLLMConfig(prev => ({ ...prev, modelName: undefined }));
     }
@@ -83,10 +87,31 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onClose }) => {
       setIsUnlocked(true);
       setSuccess('Settings unlocked successfully');
 
+      // Store password in session (30 min timeout)
+      setSessionPassword(password, true);
+
       // Load models into app state
-      if (loadedSettings?.llmConfigs) {
+      if (loadedSettings?.llmConfigs && loadedSettings.llmConfigs.length > 0) {
         // Convert to app models format and update store
-        // This will be used by the conversation pane
+        const models: LLMModel[] = loadedSettings.llmConfigs.map(config => ({
+          id: config.id,
+          name: config.modelName,
+          provider: config.provider,
+          contextWindow: config.maxTokens || 200000,
+        }));
+
+        setAppAvailableModels(models);
+
+        // Set the default model
+        const defaultConfig = loadedSettings.llmConfigs.find(c => c.isDefault);
+        if (defaultConfig) {
+          const defaultModel = models.find(m => m.id === defaultConfig.id);
+          if (defaultModel) {
+            setSelectedModel(defaultModel);
+          }
+        } else if (models.length > 0) {
+          setSelectedModel(models[0]);
+        }
       }
     } catch (err) {
       setError('Invalid password');
@@ -120,6 +145,27 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onClose }) => {
 
       await settingsService.addLLMConfig(config, password);
       await loadSettings();
+
+      // Refresh app state with updated models
+      const updatedSettings = await settingsService.getSettings(password);
+      if (updatedSettings?.llmConfigs && updatedSettings.llmConfigs.length > 0) {
+        const models: LLMModel[] = updatedSettings.llmConfigs.map(c => ({
+          id: c.id,
+          name: c.modelName,
+          provider: c.provider,
+          contextWindow: c.maxTokens || 200000,
+        }));
+
+        setAppAvailableModels(models);
+
+        // If this is the default or the first model, select it
+        if (config.isDefault) {
+          const newModel = models.find(m => m.id === config.id);
+          if (newModel) {
+            setSelectedModel(newModel);
+          }
+        }
+      }
 
       // Reset form
       setNewLLMConfig({
@@ -155,6 +201,10 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onClose }) => {
       await settingsService.saveSettings(settings || {}, password);
       setIsPasswordSet(true);
       setIsUnlocked(true);
+
+      // Store password in session
+      setSessionPassword(password, true);
+
       setSuccess('Password set successfully');
     } catch (err) {
       setError('Failed to set password');

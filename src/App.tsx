@@ -5,11 +5,16 @@ import { useAppStore } from './stores/appStore';
 import { cn } from './utils/cn';
 import { getSettingsService } from './services/SettingsService';
 import { LLMModel } from './types/ui';
+import { usePasswordSession } from './hooks/usePasswordSession';
+import { getDefaultModelConfig } from './services/SettingsHelper';
+import { initializeLLMService, resetLLMService } from './services/LLMService';
+import { LLMConfig } from './types/index';
 
 export const App: React.FC = () => {
   const isLeftPanelVisible = useAppStore((state) => state.isLeftPanelVisible);
   const setAvailableModels = useAppStore((state) => (state as any).setAvailableModels);
   const setSelectedModel = useAppStore((state) => state.setSelectedModel);
+  const { password } = usePasswordSession();
 
   // Load saved models on app initialization
   useEffect(() => {
@@ -51,6 +56,45 @@ export const App: React.FC = () => {
 
     loadSavedModels();
   }, [setAvailableModels, setSelectedModel]);
+
+  // Initialize LLM service when password is available
+  useEffect(() => {
+    const initLLMService = async () => {
+      if (!password) {
+        // No password, reset LLM service
+        resetLLMService();
+        return;
+      }
+
+      try {
+        // Get default model config with decrypted API key
+        const modelConfig = await getDefaultModelConfig(password);
+
+        if (!modelConfig) {
+          console.log('[App] No default model config found');
+          return;
+        }
+
+        // Convert StoredLLMConfig to LLMConfig
+        const llmConfig: LLMConfig = {
+          provider: modelConfig.provider,
+          model: modelConfig.modelName,
+          apiKey: modelConfig.apiKey,
+          endpoint: modelConfig.endpoint,
+          maxTokens: modelConfig.maxTokens,
+          temperature: modelConfig.temperature,
+        };
+
+        // Initialize the LLM service
+        initializeLLMService(llmConfig);
+        console.log('[App] LLM service initialized with model:', modelConfig.modelName);
+      } catch (error) {
+        console.error('[App] Failed to initialize LLM service:', error);
+      }
+    };
+
+    initLLMService();
+  }, [password]);
 
   return (
     <div className="flex h-screen w-screen bg-gray-900 text-gray-100 overflow-hidden">
