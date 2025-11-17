@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { AppState, Project, Message, FileNode, LLMModel, PanelMode, RightPanelMode } from '../types/ui';
+import { AppState, Project, Message, FileNode, LLMModel, PanelMode, RightPanelMode, PhaseInfo, PhaseStatus, PhaseDeliverable } from '../types/ui';
 
 export const useAppStore = create<AppState>((set) => ({
   // Initial panel state
@@ -29,6 +29,9 @@ export const useAppStore = create<AppState>((set) => ({
   rightPanelContent: '',
   rightPanelHeader: 'Welcome to CCIDE',
   availableFiles: [],
+
+  // Initial phase tracking
+  currentPhase: null,
 
   // Actions
   setLeftPanelMode: (mode: PanelMode) =>
@@ -132,4 +135,26 @@ export const useAppStore = create<AppState>((set) => ({
 
   setAvailableFiles: (files: string[]) =>
     set({ availableFiles: files }),
+
+  setCurrentPhase: (phaseInfo: PhaseInfo | null) =>
+    set({ currentPhase: phaseInfo }),
+
+  updatePhaseStatus: (status: PhaseStatus) =>
+    set((state) =>
+      state.currentPhase
+        ? { currentPhase: { ...state.currentPhase, status } }
+        : state
+    ),
+
+  addPhaseDeliverable: (deliverable: PhaseDeliverable) =>
+    set((state) =>
+      state.currentPhase
+        ? {
+            currentPhase: {
+              ...state.currentPhase,
+              deliverables: [...state.currentPhase.deliverables, deliverable],
+            },
+          }
+        : state
+    ),
 }));

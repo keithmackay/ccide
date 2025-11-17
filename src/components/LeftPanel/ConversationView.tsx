@@ -6,6 +6,11 @@ import { getLLMService } from '../../services/LLMService';
 import { LLMMessage } from '../../types/index';
 import { usePasswordSession } from '../../hooks/usePasswordSession';
 import { ReauthModal } from '../Auth/ReauthModal';
+import {
+  detectPhaseCompletion,
+  createPhaseInfo,
+  detectPhaseStart,
+} from '../../utils/phaseDetection';
 
 export const ConversationView: React.FC = () => {
   const messages = useAppStore((state) => state.messages);
@@ -15,6 +20,9 @@ export const ConversationView: React.FC = () => {
   const setActiveProject = useAppStore((state) => state.setActiveProject);
   const addProject = useAppStore((state) => state.addProject);
   const selectedModel = useAppStore((state) => state.selectedModel);
+  const currentPhase = useAppStore((state) => state.currentPhase);
+  const setCurrentPhase = useAppStore((state) => state.setCurrentPhase);
+  const setRightPanelMode = useAppStore((state) => state.setRightPanelMode);
 
   const { isSessionExpired, refreshSession, setPassword } = usePasswordSession();
 
@@ -58,6 +66,72 @@ export const ConversationView: React.FC = () => {
       scrollToBottom();
     }
   }, [isStreaming, messages, scrollToBottom]);
+
+  // Detect phase completions in assistant messages
+  useEffect(() => {
+    if (!activeProject) return;
+
+    // Get the last assistant message
+    const projectMessages = messages.filter(
+      (msg) => msg.projectId === activeProject.id && msg.role === 'assistant'
+    );
+    const lastMessage = projectMessages[projectMessages.length - 1];
+
+    if (!lastMessage || isStreaming) return;
+
+    // Check for phase completion
+    const completedPhase = detectPhaseCompletion(
+      lastMessage.content,
+      currentPhase?.phase || null
+    );
+
+    if (completedPhase) {
+      console.log('[ConversationView] Phase completion detected:', completedPhase);
+      const phaseInfo = createPhaseInfo(completedPhase, lastMessage.content);
+      setCurrentPhase(phaseInfo);
+      setRightPanelMode('phase-review');
+    } else {
+      // Check for phase start
+      const startedPhase = detectPhaseStart(lastMessage.content);
+      if (startedPhase && (!currentPhase || currentPhase.status === 'approved')) {
+        console.log('[ConversationView] Phase start detected:', startedPhase);
+        setCurrentPhase({
+          phase: startedPhase,
+          status: 'active',
+          deliverables: [],
+        });
+      }
+    }
+  }, [messages, activeProject, isStreaming, currentPhase, setCurrentPhase, setRightPanelMode]);
+
+  // Listen for phase action events from PhaseReviewPanel
+  useEffect(() => {
+    const handlePhaseContinue = (event: Event) => {
+      const customEvent = event as CustomEvent;
+      console.log('[ConversationView] Phase continue requested:', customEvent.detail.phase);
+
+      // Send a continue message to the LLM
+      const continueMessage = 'Please continue to the next phase.';
+      handleSendWithStreaming(continueMessage);
+    };
+
+    const handlePhaseFeedback = (event: Event) => {
+      const customEvent = event as CustomEvent;
+      console.log('[ConversationView] Phase feedback provided:', customEvent.detail);
+
+      // Send feedback as a user message
+      const feedbackMessage = `Here is my feedback for the ${customEvent.detail.phase} phase:\n\n${customEvent.detail.feedback}`;
+      handleSendWithStreaming(feedbackMessage);
+    };
+
+    window.addEventListener('phase-continue', handlePhaseContinue);
+    window.addEventListener('phase-feedback', handlePhaseFeedback);
+
+    return () => {
+      window.removeEventListener('phase-continue', handlePhaseContinue);
+      window.removeEventListener('phase-feedback', handlePhaseFeedback);
+    };
+  }, [activeProject]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleStopStreaming = useCallback(() => {
     streamingRef.current = false;

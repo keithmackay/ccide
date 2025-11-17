@@ -4,7 +4,38 @@
  */
 
 export type PanelMode = 'projects' | 'conversation' | 'files';
-export type RightPanelMode = 'content' | 'settings';
+export type RightPanelMode = 'content' | 'settings' | 'phase-review';
+
+export type ProjectPhase =
+  | 'discovery'
+  | 'specification'
+  | 'icp_personas'
+  | 'architecture'
+  | 'uiux_design'
+  | 'prd'
+  | 'parallel_planning'
+  | 'implementation'
+  | 'code_review'
+  | 'performance'
+  | 'deployment'
+  | 'documentation'
+  | 'finalization';
+
+export type PhaseStatus = 'active' | 'awaiting_review' | 'approved';
+
+export interface PhaseDeliverable {
+  name: string;
+  path: string;
+  type: 'document' | 'code' | 'diagram';
+  preview?: string;
+}
+
+export interface PhaseInfo {
+  phase: ProjectPhase;
+  status: PhaseStatus;
+  deliverables: PhaseDeliverable[];
+  completionMessage?: string;
+}
 
 export interface Project {
   id: string;
@@ -74,6 +105,9 @@ export interface AppState {
   rightPanelHeader: string;
   availableFiles: string[];
 
+  // Phase tracking
+  currentPhase: PhaseInfo | null;
+
   // Actions
   setLeftPanelMode: (mode: PanelMode) => void;
   setRightPanelMode: (mode: RightPanelMode) => void;
@@ -93,4 +127,7 @@ export interface AppState {
   toggleFileExpanded: (fileId: string) => void;
   setRightPanelContent: (content: string, header: string) => void;
   setAvailableFiles: (files: string[]) => void;
+  setCurrentPhase: (phaseInfo: PhaseInfo | null) => void;
+  updatePhaseStatus: (status: PhaseStatus) => void;
+  addPhaseDeliverable: (deliverable: PhaseDeliverable) => void;
 }

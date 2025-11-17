@@ -2,6 +2,7 @@ import React from 'react';
 import { useAppStore } from '../../stores/appStore';
 import { FileText } from 'lucide-react';
 import { SettingsPage } from '../SettingsPage';
+import { PhaseReviewPanel } from './PhaseReviewPanel';
 
 export const RightPanelWorkpane: React.FC = () => {
   const rightPanelMode = useAppStore((state) => state.rightPanelMode);
@@ -13,6 +14,11 @@ export const RightPanelWorkpane: React.FC = () => {
   // Show settings page
   if (rightPanelMode === 'settings') {
     return <SettingsPage onClose={() => setRightPanelMode('content')} />;
+  }
+
+  // Show phase review panel
+  if (rightPanelMode === 'phase-review') {
+    return <PhaseReviewPanel />;
   }
 
   // Display file content if a file is selected
