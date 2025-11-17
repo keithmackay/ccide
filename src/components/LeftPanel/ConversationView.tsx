@@ -125,28 +125,28 @@ export const ConversationView: React.FC = () => {
             messages: projectMessages,
             systemPrompt: 'You are a helpful AI assistant integrated into CCIDE, a code IDE.',
           })) {
-          // Check if streaming was cancelled
-          if (!streamingRef.current) {
-            break;
-          }
+            // Check if streaming was cancelled
+            if (!streamingRef.current) {
+              break;
+            }
 
-          chunkBuffer += chunk;
-          accumulatedContent += chunk;
+            chunkBuffer += chunk;
+            accumulatedContent += chunk;
 
-          // Batch updates to avoid excessive re-renders
-          const now = Date.now();
-          if (now - lastUpdateTime >= BATCH_INTERVAL || chunkBuffer.length > 50) {
-            updateMessage(assistantMessageId, { content: accumulatedContent });
-            chunkBuffer = '';
-            lastUpdateTime = now;
+            // Batch updates to avoid excessive re-renders
+            const now = Date.now();
+            if (now - lastUpdateTime >= BATCH_INTERVAL || chunkBuffer.length > 50) {
+              updateMessage(assistantMessageId, { content: accumulatedContent });
+              chunkBuffer = '';
+              lastUpdateTime = now;
 
-            // Use requestAnimationFrame for smoother scrolling
-            requestAnimationFrame(() => {
-              if (streamingRef.current) {
-                scrollToBottom();
-              }
-            });
-          }
+              // Use requestAnimationFrame for smoother scrolling
+              requestAnimationFrame(() => {
+                if (streamingRef.current) {
+                  scrollToBottom();
+                }
+              });
+            }
           }
 
           // Final update with any remaining content
