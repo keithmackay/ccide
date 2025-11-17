@@ -8,10 +8,8 @@ import { X } from 'lucide-react';
 import { getSettingsService } from '../services/SettingsService';
 import { getAccountService } from '../services/AccountService';
 import { clearConfigCache } from '../services/SettingsHelper';
-import { StoredLLMConfig, Settings } from '../types/models';
-import { useAppStore } from '../stores/appStore';
+import { StoredLLMConfig } from '../types/models';
 import { usePasswordSession } from '../hooks/usePasswordSession';
-import { LLMModel } from '../types/ui';
 import AddProviderDialog from './Settings/AddProviderDialog';
 import ConfirmDeleteProviderDialog from './Settings/ConfirmDeleteProviderDialog';
 import ChangeDefaultModelDialog from './Settings/ChangeDefaultModelDialog';
@@ -43,10 +41,6 @@ const PROVIDER_MODELS: Record<string, { id: string; name: string }[]> = {
 
 export const SettingsPage: React.FC<SettingsPageProps> = ({ onClose }) => {
   const [activeTab, setActiveTab] = useState<'account' | 'llm' | 'about'>('llm');
-  const [settings, setSettings] = useState<Settings | null>(null);
-  const [password, setPassword] = useState('');
-  const [isPasswordSet, setIsPasswordSet] = useState(false);
-  const [isUnlocked, setIsUnlocked] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
@@ -68,13 +62,15 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onClose }) => {
 
   const settingsService = getSettingsService();
   const accountService = getAccountService();
-  const setAppAvailableModels = useAppStore((state) => (state as any).setAvailableModels);
-  const setSelectedModel = useAppStore((state) => state.setSelectedModel);
   const { password: sessionPassword, setPassword: setSessionPassword } = usePasswordSession();
 
   useEffect(() => {
     loadSettings();
     loadUsername();
+    // Auto-load providers since user is already authenticated at app level
+    if (sessionPassword) {
+      loadProviders();
+    }
   }, []);
 
   useEffect(() => {
@@ -94,74 +90,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onClose }) => {
 
   const loadSettings = async () => {
     try {
-      const loadedSettings = await settingsService.getSettings();
-      setSettings(loadedSettings);
-      setIsPasswordSet(!!loadedSettings?.encryptedData);
+      await settingsService.getSettings();
     } catch (err) {
       setError('Failed to load settings');
-    }
-  };
-
-  const handleUnlock = async () => {
-    try {
-      setError('');
-      const loadedSettings = await settingsService.getSettings(password);
-      setSettings(loadedSettings);
-      setIsUnlocked(true);
-      setSuccess('Settings unlocked successfully');
-
-      // Store password in session (30 min timeout)
-      setSessionPassword(password, true);
-
-      // Load models into app state
-      if (loadedSettings?.llmConfigs && loadedSettings.llmConfigs.length > 0) {
-        // Convert to app models format and update store
-        const models: LLMModel[] = loadedSettings.llmConfigs.map(config => ({
-          id: config.id,
-          name: config.modelName,
-          provider: config.provider,
-          contextWindow: config.maxTokens || 200000,
-        }));
-
-        setAppAvailableModels(models);
-
-        // Set the default model
-        const defaultConfig = loadedSettings.llmConfigs.find(c => c.isDefault);
-        if (defaultConfig) {
-          const defaultModel = models.find(m => m.id === defaultConfig.id);
-          if (defaultModel) {
-            setSelectedModel(defaultModel);
-          }
-        } else if (models.length > 0) {
-          const firstModel = models[0];
-          if (firstModel) {
-            setSelectedModel(firstModel);
-          }
-        }
-      }
-    } catch (err) {
-      setError('Invalid password');
-    }
-  };
-
-  const handleSetPassword = async () => {
-    try {
-      setError('');
-      if (password.length < 8) {
-        setError('Password must be at least 8 characters');
-        return;
-      }
-
-      await settingsService.saveSettings(settings || {}, password);
-      setIsPasswordSet(true);
-      setIsUnlocked(true);
-
-      // Store password in session
-      setSessionPassword(password, true);
-
-      setSuccess('Password set successfully');
-    } catch (err) {
-      setError('Failed to set password');
     }
   };
 
@@ -191,10 +122,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onClose }) => {
       setSessionPassword('', false);
 
       // Clear state
-      setSettings(null);
       setProviders([]);
-      setIsUnlocked(false);
-      setIsPasswordSet(false);
 
       setShowDeleteAccount(false);
       setSuccess('Account deleted successfully. All data has been removed.');
@@ -347,59 +275,34 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onClose }) => {
     <div className="settings-section">
       <h2 className="text-gray-100 text-xl font-semibold mb-4">Account Settings</h2>
 
-      {!isPasswordSet && (
-        <div className="password-setup bg-gray-800 p-4 rounded-lg border border-gray-700">
-          <h3 className="text-gray-200 text-lg font-medium mb-2">Set Up Encryption Password</h3>
-          <p className="text-gray-300 mb-4">Create a password to encrypt your API keys and sensitive settings.</p>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Enter password (min 8 characters)"
-            className="input-field bg-gray-900 text-gray-100 border-gray-600"
-          />
-          <button onClick={handleSetPassword} className="btn btn-primary">
-            Set Password
+      <div className="account-info bg-gray-800 p-4 rounded-lg border border-gray-700 mb-4">
+        <h3 className="text-gray-200 text-lg font-medium mb-2">Account Information</h3>
+        <div className="text-gray-300 space-y-2">
+          <p><span className="font-semibold">Username:</span> {currentUsername}</p>
+          <p><span className="font-semibold">Status:</span> <span className="text-green-400">Authenticated</span></p>
+          <p className="text-sm text-gray-400 mt-3">
+            You are currently logged in. Your API keys are encrypted and stored securely in your browser.
+          </p>
+        </div>
+      </div>
+
+      <div className="account-actions bg-gray-800 p-4 rounded-lg border border-gray-700">
+        <h3 className="text-gray-200 text-lg font-medium mb-4">Account Management</h3>
+        <div className="flex flex-col gap-3">
+          <button
+            onClick={() => setShowChangePassword(true)}
+            className="btn btn-primary"
+          >
+            Change Password
+          </button>
+          <button
+            onClick={() => setShowDeleteAccount(true)}
+            className="btn btn-danger"
+          >
+            Delete Account
           </button>
         </div>
-      )}
-
-      {isPasswordSet && !isUnlocked && (
-        <div className="password-unlock bg-gray-800 p-4 rounded-lg border border-gray-700">
-          <h3 className="text-gray-200 text-lg font-medium mb-2">Unlock Settings</h3>
-          <p className="text-gray-300 mb-4">Enter your password to view and modify encrypted settings.</p>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Enter password"
-            className="input-field bg-gray-900 text-gray-100 border-gray-600"
-          />
-          <button onClick={handleUnlock} className="btn btn-primary">
-            Unlock
-          </button>
-        </div>
-      )}
-
-      {isUnlocked && (
-        <div className="account-actions bg-gray-800 p-4 rounded-lg border border-gray-700">
-          <h3 className="text-gray-200 text-lg font-medium mb-4">Account Management</h3>
-          <div className="flex flex-col gap-3">
-            <button
-              onClick={() => setShowChangePassword(true)}
-              className="btn btn-primary"
-            >
-              Change Password
-            </button>
-            <button
-              onClick={() => setShowDeleteAccount(true)}
-              className="btn btn-danger"
-            >
-              Delete Account
-            </button>
-          </div>
-        </div>
-      )}
+      </div>
     </div>
   );
 
@@ -407,65 +310,55 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onClose }) => {
     <div className="settings-section">
       <h2 className="text-gray-100 text-xl font-semibold mb-4">LLM Configuration</h2>
 
-      {!isUnlocked && (
-        <p className="warning text-gray-200 bg-yellow-900/20 border border-yellow-700">
-          Please unlock settings to manage LLM configurations.
-        </p>
-      )}
+      <button
+        onClick={() => setShowAddProvider(true)}
+        className="btn btn-primary mb-6"
+      >
+        Add Provider
+      </button>
 
-      {isUnlocked && (
-        <>
-          <button
-            onClick={() => setShowAddProvider(true)}
-            className="btn btn-primary mb-6"
-          >
-            Add Provider
-          </button>
-
-          <div className="provider-list space-y-3">
-            {providers && providers.length > 0 ? (
-              providers.map(provider => (
-                <div key={provider.id} className="provider-card bg-gray-800 p-4 rounded-lg border border-gray-700 flex items-center justify-between">
-                  <div className="provider-info flex-1">
-                    <div className="flex items-center gap-3">
-                      <h3 className="text-gray-100 font-semibold">{provider.provider}</h3>
-                      {provider.isDefault && <span className="badge bg-green-600 text-white px-2 py-1 rounded text-xs">Default</span>}
-                    </div>
-                    <p className="text-gray-300 text-sm mt-1">{provider.modelName}</p>
-                  </div>
-                  <div className="provider-actions flex gap-2">
-                    {!provider.isDefault && (
-                      <button
-                        onClick={() => setChangeDefaultTarget({
-                          id: provider.id,
-                          provider: provider.provider,
-                          model: provider.modelName,
-                        })}
-                        className="btn btn-secondary btn-small"
-                      >
-                        Set as Default
-                      </button>
-                    )}
-                    <button
-                      onClick={() => setDeleteTarget({
-                        id: provider.id,
-                        provider: provider.provider,
-                        model: provider.modelName,
-                      })}
-                      className="btn btn-danger btn-small"
-                      title="Delete provider"
-                    >
-                      🗑️
-                    </button>
-                  </div>
+      <div className="provider-list space-y-3">
+        {providers && providers.length > 0 ? (
+          providers.map(provider => (
+            <div key={provider.id} className="provider-card bg-gray-800 p-4 rounded-lg border border-gray-700 flex items-center justify-between">
+              <div className="provider-info flex-1">
+                <div className="flex items-center gap-3">
+                  <h3 className="text-gray-100 font-semibold">{provider.provider}</h3>
+                  {provider.isDefault && <span className="badge bg-green-600 text-white px-2 py-1 rounded text-xs">Default</span>}
                 </div>
-              ))
-            ) : (
-              <p className="text-gray-300">No providers configured yet. Click "Add Provider" to get started.</p>
-            )}
-          </div>
-        </>
-      )}
+                <p className="text-gray-300 text-sm mt-1">{provider.modelName}</p>
+              </div>
+              <div className="provider-actions flex gap-2">
+                {!provider.isDefault && (
+                  <button
+                    onClick={() => setChangeDefaultTarget({
+                      id: provider.id,
+                      provider: provider.provider,
+                      model: provider.modelName,
+                    })}
+                    className="btn btn-secondary btn-small"
+                  >
+                    Set as Default
+                  </button>
+                )}
+                <button
+                  onClick={() => setDeleteTarget({
+                    id: provider.id,
+                    provider: provider.provider,
+                    model: provider.modelName,
+                  })}
+                  className="btn btn-danger btn-small"
+                  title="Delete provider"
+                >
+                  🗑️
+                </button>
+              </div>
+            </div>
+          ))
+        ) : (
+          <p className="text-gray-300">No providers configured yet. Click "Add Provider" to get started.</p>
+        )}
+      </div>
     </div>
   );
 
