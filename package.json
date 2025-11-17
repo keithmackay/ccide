@@ -27,6 +27,8 @@
   "homepage": "https://github.com/ccide/ccide#readme",
   "scripts": {
     "dev": "vite",
+    "proxy": "node server/proxy.js",
+    "dev:all": "concurrently \"npm run dev\" \"npm run proxy\" --names \"vite,proxy\" --prefix-colors \"cyan,magenta\"",
     "build": "tsc && vite build",
     "preview": "vite preview",
     "test": "vitest",
@@ -41,7 +43,9 @@
   "dependencies": {
     "@tanstack/react-query": "^5.28.4",
     "clsx": "^2.1.0",
+    "cors": "^2.8.5",
     "crypto-js": "^4.2.0",
+    "express": "^5.1.0",
     "idb": "^8.0.0",
     "lucide-react": "^0.358.0",
     "react": "^18.3.1",
@@ -64,6 +68,7 @@
     "@vitest/coverage-v8": "^1.4.0",
     "@vitest/ui": "^1.4.0",
     "autoprefixer": "^10.4.19",
+    "concurrently": "^9.2.1",
     "eslint": "^8.57.0",
     "eslint-plugin-react": "^7.34.1",
     "eslint-plugin-react-hooks": "^4.6.0",

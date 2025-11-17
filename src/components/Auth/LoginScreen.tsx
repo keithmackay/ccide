@@ -24,15 +24,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
     try {
       const accountService = getAccountService();
 
-      // Check if account exists
-      const accountExists = await accountService.accountExists();
-
-      if (!accountExists) {
-        // No account exists, need to create one
-        onNeedSetup();
-        return;
-      }
-
       // Attempt login
       const validPassword = await accountService.login(username, password);
 
@@ -131,12 +122,23 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
         </form>
 
         {/* Additional Info */}
-        <div className="pt-4 border-t border-gray-700">
+        <div className="pt-4 border-t border-gray-700 space-y-3">
           <p className="text-xs text-gray-400 text-center">
             Your credentials are stored locally and encrypted.
             <br />
             No data is sent to external servers.
           </p>
+
+          {/* Create Account Link */}
+          <div className="text-center">
+            <button
+              type="button"
+              onClick={onNeedSetup}
+              className="text-sm text-blue-400 hover:text-blue-300 transition-colors focus:outline-none focus:underline"
+            >
+              Don't have an account? Create one
+            </button>
+          </div>
         </div>
       </div>
     </div>

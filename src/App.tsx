@@ -22,31 +22,6 @@ export const App: React.FC = () => {
   // Authentication state
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [showSetup, setShowSetup] = useState(false);
-  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
-
-  // Check authentication status on mount
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const accountService = getAccountService();
-        const accountExists = await accountService.accountExists();
-
-        if (!accountExists) {
-          // No account exists, show setup screen
-          setShowSetup(true);
-          setIsCheckingAuth(false);
-        } else {
-          // Account exists, require login
-          setIsCheckingAuth(false);
-        }
-      } catch (error) {
-        console.error('Failed to check auth status:', error);
-        setIsCheckingAuth(false);
-      }
-    };
-
-    checkAuth();
-  }, []);
 
   // Handle successful login
   const handleLoginSuccess = (loginPassword: string) => {
@@ -156,19 +131,7 @@ export const App: React.FC = () => {
     initLLMService();
   }, [password]);
 
-  // Show loading screen while checking authentication
-  if (isCheckingAuth) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-900">
-        <div className="text-center">
-          <div className="inline-block w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-          <p className="text-gray-400">Loading CCIDE...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Show account setup screen for first-time users
+  // Show account setup screen when requested
   if (showSetup) {
     return <AccountSetup onSetupComplete={handleSetupComplete} />;
   }

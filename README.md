@@ -59,6 +59,22 @@
 - npm >= 9.0.0
 - API Key from Anthropic (Claude) or OpenAI (GPT)
 
+### Quick Start
+
+1. Install dependencies:
+   ```bash
+   npm install
+   ```
+
+2. Start the application (frontend + API proxy):
+   ```bash
+   npm run dev:all
+   ```
+
+3. Open http://localhost:3000 in your browser
+
+4. Create an account and configure your LLM API keys in Settings
+
 ### Installation
 
 ```bash
@@ -92,9 +108,30 @@ npm install
 
 ### Development
 
+**Important:** CCIDE requires both the frontend dev server and a local API proxy server to work properly (to avoid CORS issues).
+
+#### Option 1: Run Both Servers Together (Recommended)
+```bash
+npm run dev:all
+```
+
+This starts both servers concurrently:
+- Frontend (Vite): http://localhost:3000
+- API Proxy: http://localhost:3001
+
+#### Option 2: Run Servers Separately
+
+**Terminal 1 - Frontend:**
 ```bash
 npm run dev
 ```
+
+**Terminal 2 - API Proxy:**
+```bash
+npm run proxy
+```
+
+See [API_PROXY.md](docs/API_PROXY.md) for detailed proxy server documentation.
 
 ### Build
 

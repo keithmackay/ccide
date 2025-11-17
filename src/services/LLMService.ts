@@ -27,7 +27,8 @@ export class ClaudeLLMService implements ILLMService {
 
   constructor(config: LLMConfig) {
     this.config = config;
-    this.apiEndpoint = config.endpoint || 'https://api.anthropic.com/v1/messages';
+    // Use local proxy to avoid CORS issues
+    this.apiEndpoint = config.endpoint || 'http://localhost:3001/api/anthropic/messages';
   }
 
   /**
@@ -36,14 +37,14 @@ export class ClaudeLLMService implements ILLMService {
   async sendRequest(request: LLMRequest): Promise<LLMResponse> {
     console.log('[ClaudeLLMService] Sending request to Claude API...');
 
+    // Send API key in body for proxy to forward
     const response = await fetch(this.apiEndpoint, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': this.config.apiKey,
-        'anthropic-version': '2023-06-01'
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
+        apiKey: this.config.apiKey,
         model: this.config.model || 'claude-sonnet-4-5-20250929',
         max_tokens: request.maxTokens || this.config.maxTokens || 4096,
         temperature: request.temperature ?? this.config.temperature ?? 0.7,
@@ -106,14 +107,16 @@ export class ClaudeLLMService implements ILLMService {
 
     let response;
     try {
+      // Send API key in body for proxy to forward
       response = await fetch(this.apiEndpoint, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': this.config.apiKey,
-          'anthropic-version': '2023-06-01'
+          'Content-Type': 'application/json'
         },
-        body: JSON.stringify(requestBody)
+        body: JSON.stringify({
+          apiKey: this.config.apiKey,
+          ...requestBody
+        })
       });
 
       console.log('[ClaudeLLMService] Response status:', response.status);
@@ -173,19 +176,21 @@ export class OpenAILLMService implements ILLMService {
 
   constructor(config: LLMConfig) {
     this.config = config;
-    this.apiEndpoint = config.endpoint || 'https://api.openai.com/v1/chat/completions';
+    // Use local proxy to avoid CORS issues
+    this.apiEndpoint = config.endpoint || 'http://localhost:3001/api/openai/chat/completions';
   }
 
   async sendRequest(request: LLMRequest): Promise<LLMResponse> {
     console.log('[OpenAILLMService] Sending request to OpenAI API...');
 
+    // Send API key in body for proxy to forward
     const response = await fetch(this.apiEndpoint, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + this.config.apiKey
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
+        apiKey: this.config.apiKey,
         model: this.config.model || 'gpt-4',
         max_tokens: request.maxTokens || this.config.maxTokens || 4096,
         temperature: request.temperature ?? this.config.temperature ?? 0.7,
@@ -225,13 +230,14 @@ export class OpenAILLMService implements ILLMService {
   async *streamRequest(request: LLMRequest): AsyncGenerator<string> {
     console.log('[OpenAILLMService] Streaming request to OpenAI API...');
 
+    // Send API key in body for proxy to forward
     const response = await fetch(this.apiEndpoint, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + this.config.apiKey
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
+        apiKey: this.config.apiKey,
         model: this.config.model || 'gpt-4',
         max_tokens: request.maxTokens || this.config.maxTokens || 4096,
         temperature: request.temperature ?? this.config.temperature ?? 0.7,
