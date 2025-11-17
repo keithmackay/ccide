@@ -23,9 +23,9 @@ export const ProjectsView: React.FC = () => {
       id: `project-${Date.now()}`,
       name,
       path: `/projects/${name}`,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      isArchived: false,
+      status: 'active' as const,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
     };
 
     addProject(newProject);

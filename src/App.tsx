@@ -17,6 +17,7 @@ export const App: React.FC = () => {
   const isLeftPanelVisible = useAppStore((state) => state.isLeftPanelVisible);
   const setAvailableModels = useAppStore((state) => (state as any).setAvailableModels);
   const setSelectedModel = useAppStore((state) => state.setSelectedModel);
+  const loadProjects = useAppStore((state) => state.loadProjects);
   const { password, setPassword } = usePasswordSession();
 
   // Authentication state
@@ -79,6 +80,18 @@ export const App: React.FC = () => {
 
     loadSavedModels();
   }, [setAvailableModels, setSelectedModel]);
+
+  // Load projects from database when authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      console.log('[App] Loading projects from database...');
+      loadProjects().then(() => {
+        console.log('[App] Projects loaded successfully');
+      }).catch((error) => {
+        console.error('[App] Failed to load projects:', error);
+      });
+    }
+  }, [isAuthenticated, loadProjects]);
 
   // Initialize LLM service when password is available
   useEffect(() => {

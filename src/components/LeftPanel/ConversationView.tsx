@@ -42,9 +42,10 @@ export const ConversationView: React.FC = () => {
         id: 'default-project',
         name: 'Default Project',
         description: 'Default project for conversations',
+        path: '/projects/default-project',
+        status: 'active' as const,
         createdAt: Date.now(),
-        lastModified: Date.now(),
-        isArchived: false,
+        updatedAt: Date.now(),
       };
       addProject(defaultProject);
       setActiveProject(defaultProject);

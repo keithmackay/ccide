@@ -40,10 +40,12 @@ export interface PhaseInfo {
 export interface Project {
   id: string;
   name: string;
+  status: 'active' | 'archived';
+  createdAt: number;
+  updatedAt: number;
   path: string;
-  createdAt: string;
-  updatedAt: string;
-  isArchived: boolean;
+  description?: string;
+  tags?: string[];
 }
 
 export interface Message {
@@ -130,4 +132,5 @@ export interface AppState {
   setCurrentPhase: (phaseInfo: PhaseInfo | null) => void;
   updatePhaseStatus: (status: PhaseStatus) => void;
   addPhaseDeliverable: (deliverable: PhaseDeliverable) => void;
+  loadProjects: () => Promise<void>;
 }

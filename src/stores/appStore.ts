@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { AppState, Project, Message, FileNode, LLMModel, PanelMode, RightPanelMode, PhaseInfo, PhaseStatus, PhaseDeliverable } from '../types/ui';
+import { getProjectService } from '../services/ProjectService';
 
 export const useAppStore = create<AppState>((set) => ({
   // Initial panel state
@@ -56,20 +57,38 @@ export const useAppStore = create<AppState>((set) => ({
     set({ selectedFile: file }),
 
   addProject: (project: Project) =>
-    set((state) => ({
-      activeProjects: [...state.activeProjects, project],
-    })),
+    set((state) => {
+      // Persist to database
+      const projectService = getProjectService();
+      projectService.createProject(
+        project.name,
+        project.description,
+        project.tags
+      ).catch((error) => {
+        console.error('[appStore] Failed to persist project:', error);
+      });
+
+      return {
+        activeProjects: [...state.activeProjects, project],
+      };
+    }),
 
   archiveProject: (projectId: string) =>
     set((state) => {
       const project = state.activeProjects.find((p) => p.id === projectId);
       if (!project) return state;
 
+      // Persist to database
+      const projectService = getProjectService();
+      projectService.archiveProject(projectId).catch((error) => {
+        console.error('[appStore] Failed to archive project:', error);
+      });
+
       return {
         activeProjects: state.activeProjects.filter((p) => p.id !== projectId),
         archivedProjects: [
           ...state.archivedProjects,
-          { ...project, isArchived: true },
+          { ...project, status: 'archived' },
         ],
       };
     }),
@@ -79,13 +98,19 @@ export const useAppStore = create<AppState>((set) => ({
       const project = state.archivedProjects.find((p) => p.id === projectId);
       if (!project) return state;
 
+      // Persist to database
+      const projectService = getProjectService();
+      projectService.unarchiveProject(projectId).catch((error) => {
+        console.error('[appStore] Failed to unarchive project:', error);
+      });
+
       return {
         archivedProjects: state.archivedProjects.filter(
           (p) => p.id !== projectId
         ),
         activeProjects: [
           ...state.activeProjects,
-          { ...project, isArchived: false },
+          { ...project, status: 'active' },
         ],
       };
     }),
@@ -157,4 +182,26 @@ export const useAppStore = create<AppState>((set) => ({
           }
         : state
     ),
+
+  loadProjects: async () => {
+    try {
+      const projectService = getProjectService();
+      const [activeProjects, archivedProjects] = await Promise.all([
+        projectService.getActiveProjects(),
+        projectService.getArchivedProjects(),
+      ]);
+
+      console.log('[appStore] Loaded projects from database:', {
+        active: activeProjects.length,
+        archived: archivedProjects.length,
+      });
+
+      set({
+        activeProjects,
+        archivedProjects,
+      });
+    } catch (error) {
+      console.error('[appStore] Failed to load projects:', error);
+    }
+  },
 }));
