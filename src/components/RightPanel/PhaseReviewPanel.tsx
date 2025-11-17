@@ -172,42 +172,43 @@ export const PhaseReviewPanel: React.FC = () => {
             </p>
           </div>
 
-        {/* Feedback Section */}
-        <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
-          <h3 className="text-lg font-semibold text-gray-200 mb-4">
-            Provide Feedback (Optional)
-          </h3>
-          <textarea
-            value={feedback}
-            onChange={(e) => setFeedback(e.target.value)}
-            placeholder="Share your thoughts, requests for changes, or additional requirements..."
-            className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-3 text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-            rows={5}
-          />
-        </div>
+          {/* Feedback Section */}
+          <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
+            <h3 className="text-lg font-semibold text-gray-200 mb-4">
+              Provide Feedback (Optional)
+            </h3>
+            <textarea
+              value={feedback}
+              onChange={(e) => setFeedback(e.target.value)}
+              placeholder="Share your thoughts, requests for changes, or additional requirements..."
+              className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-3 text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+              rows={5}
+            />
+          </div>
 
-        {/* Action Buttons */}
-        <div className="flex gap-3 justify-end">
-          <button
-            onClick={handleProvideFeedback}
-            disabled={!feedback.trim()}
-            className={cn(
-              'px-6 py-3 rounded-lg transition-colors flex items-center gap-2',
-              feedback.trim()
-                ? 'bg-yellow-600 hover:bg-yellow-700 text-white'
-                : 'bg-gray-700 text-gray-500 cursor-not-allowed'
-            )}
-          >
-            <Send className="w-4 h-4" />
-            <span className="font-medium">Provide Feedback</span>
-          </button>
-          <button
-            onClick={handleContinue}
-            className="px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors flex items-center gap-2 font-medium"
-          >
-            <CheckCircle className="w-4 h-4" />
-            <span>Continue to Next Phase</span>
-          </button>
+          {/* Action Buttons */}
+          <div className="flex gap-3 justify-end">
+            <button
+              onClick={handleProvideFeedback}
+              disabled={!feedback.trim()}
+              className={cn(
+                'px-6 py-3 rounded-lg transition-colors flex items-center gap-2',
+                feedback.trim()
+                  ? 'bg-yellow-600 hover:bg-yellow-700 text-white'
+                  : 'bg-gray-700 text-gray-500 cursor-not-allowed'
+              )}
+            >
+              <Send className="w-4 h-4" />
+              <span className="font-medium">Provide Feedback</span>
+            </button>
+            <button
+              onClick={handleContinue}
+              className="px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors flex items-center gap-2 font-medium"
+            >
+              <CheckCircle className="w-4 h-4" />
+              <span>Continue to Next Phase</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>
