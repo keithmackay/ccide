@@ -18,7 +18,16 @@ export const App: React.FC = () => {
   const setAvailableModels = useAppStore((state) => (state as any).setAvailableModels);
   const setSelectedModel = useAppStore((state) => state.setSelectedModel);
   const loadProjects = useAppStore((state) => state.loadProjects);
+  const clearAllProjects = useAppStore((state) => state.clearAllProjects);
   const { password, setPassword } = usePasswordSession();
+
+  // Expose clearAllProjects to window for dev console access
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      (window as any).__clearAllProjects = clearAllProjects;
+      console.log('[App] Debug: window.__clearAllProjects() available in console');
+    }
+  }, [clearAllProjects]);
 
   // Authentication state
   const [isAuthenticated, setIsAuthenticated] = useState(false);
