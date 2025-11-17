@@ -11,6 +11,8 @@ export { Database, getDatabase, STORES } from './Database';
 export { AnalyticsService, getAnalyticsService } from './AnalyticsService';
 export { SettingsService, getSettingsService } from './SettingsService';
 export { ProjectService, getProjectService } from './ProjectService';
+export { FileService, getFileService } from './FileService';
+export { ProjectFolderService, getProjectFolderService } from './ProjectFolderService';
 
 // Orchestration Services (Agent 3)
 export { AgentRegistry, getAgentRegistry, resetAgentRegistry } from './AgentRegistry.js';
@@ -20,8 +22,10 @@ export { ProgressTracker } from './ProgressTracker.js';
 export { AgentOrchestrator } from './AgentOrchestrator.js';
 
 // LLM Services (Agent 3)
+export type {
+  ILLMService
+} from './LLMService.js';
 export {
-  ILLMService,
   ClaudeLLMService,
   OpenAILLMService,
   LLMServiceFactory,

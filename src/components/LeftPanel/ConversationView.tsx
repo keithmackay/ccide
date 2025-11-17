@@ -383,7 +383,7 @@ export const ConversationView: React.FC = () => {
         : Math.max(0, historyIndex - 1);
 
       setHistoryIndex(newIndex);
-      setInput(commandHistory[newIndex]);
+      setInput(commandHistory[newIndex] || '');
     } else if (e.key === 'ArrowDown') {
       e.preventDefault();
 
@@ -399,7 +399,7 @@ export const ConversationView: React.FC = () => {
         setTemporaryInput('');
       } else {
         setHistoryIndex(newIndex);
-        setInput(commandHistory[newIndex]);
+        setInput(commandHistory[newIndex] || '');
       }
     }
   };
@@ -527,7 +527,7 @@ export const ConversationView: React.FC = () => {
             </button>
           ) : (
             <button
-              onClick={handleSendWithStreaming}
+              onClick={() => handleSendWithStreaming()}
               disabled={!input.trim()}
               className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
               title="Send message"

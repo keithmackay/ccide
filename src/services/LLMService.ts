@@ -6,8 +6,7 @@
 import {
   LLMConfig,
   LLMRequest,
-  LLMResponse,
-  LLMMessage
+  LLMResponse
 } from '../types/index.js';
 
 /**

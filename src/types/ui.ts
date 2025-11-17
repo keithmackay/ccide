@@ -28,6 +28,9 @@ export interface PhaseDeliverable {
   path: string;
   type: 'document' | 'code' | 'diagram';
   preview?: string;
+  size?: number;
+  lastModified?: Date;
+  isNewlyGenerated?: boolean;
 }
 
 export interface PhaseInfo {
@@ -63,6 +66,9 @@ export interface FileNode {
   type: 'file' | 'folder';
   children?: FileNode[];
   isExpanded?: boolean;
+  content?: string;
+  size?: number;
+  lastModified?: Date;
 }
 
 export interface LLMModel {

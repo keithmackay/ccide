@@ -93,3 +93,38 @@ export interface EncryptionKeyInfo {
   salt: string;
   iv: string;
 }
+
+/**
+ * Project File
+ * Represents a file stored within a project's folder structure
+ */
+export interface ProjectFile {
+  id: string;
+  projectId: string;
+  fileName: string;
+  folder: string;
+  path: string;
+  content: string;
+  fileType: string;
+  size: number;
+  createdAt: number;
+  updatedAt: number;
+  metadata?: {
+    purpose?: string;
+    tags?: string[];
+    description?: string;
+  };
+}
+
+/**
+ * Project Folder
+ * Represents a folder within a project's structure
+ */
+export interface ProjectFolder {
+  id: string;
+  projectId: string;
+  name: string;
+  path: string;
+  createdAt: number;
+  fileCount?: number;
+}

@@ -140,8 +140,8 @@ export class ConversationService {
         if (!modelBreakdown[msg.model]) {
           modelBreakdown[msg.model] = { count: 0, tokens: 0 };
         }
-        modelBreakdown[msg.model].count++;
-        modelBreakdown[msg.model].tokens += msg.tokens;
+        modelBreakdown[msg.model]!.count++;
+        modelBreakdown[msg.model]!.tokens += msg.tokens;
       });
 
       return {

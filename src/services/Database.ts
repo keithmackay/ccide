@@ -3,10 +3,8 @@
  * Provides a clean API for local browser-based database operations
  */
 
-import { Message, Settings, Project } from '../types/models';
-
 const DB_NAME = 'ccide_db';
-const DB_VERSION = 2; // Incremented for accounts store
+const DB_VERSION = 3; // Incremented for project files and folders stores
 
 // Object store names
 export const STORES = {
@@ -14,6 +12,8 @@ export const STORES = {
   MESSAGES: 'messages',
   SETTINGS: 'settings',
   PROJECTS: 'projects',
+  PROJECT_FILES: 'project_files',
+  PROJECT_FOLDERS: 'project_folders',
 } as const;
 
 export class Database {
@@ -76,6 +76,26 @@ export class Database {
           });
           projectStore.createIndex('status', 'status', { unique: false });
           projectStore.createIndex('updatedAt', 'updatedAt', { unique: false });
+        }
+
+        // Project files store
+        if (!db.objectStoreNames.contains(STORES.PROJECT_FILES)) {
+          const filesStore = db.createObjectStore(STORES.PROJECT_FILES, {
+            keyPath: 'id',
+          });
+          filesStore.createIndex('projectId', 'projectId', { unique: false });
+          filesStore.createIndex('folder', 'folder', { unique: false });
+          filesStore.createIndex('path', 'path', { unique: true });
+          filesStore.createIndex('updatedAt', 'updatedAt', { unique: false });
+        }
+
+        // Project folders store
+        if (!db.objectStoreNames.contains(STORES.PROJECT_FOLDERS)) {
+          const foldersStore = db.createObjectStore(STORES.PROJECT_FOLDERS, {
+            keyPath: 'id',
+          });
+          foldersStore.createIndex('projectId', 'projectId', { unique: false });
+          foldersStore.createIndex('path', 'path', { unique: true });
         }
       };
     });

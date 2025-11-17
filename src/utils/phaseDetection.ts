@@ -116,7 +116,7 @@ const DELIVERABLE_PATTERNS = [
  */
 export function detectPhaseCompletion(
   message: string,
-  currentPhase: ProjectPhase | null
+  _currentPhase: ProjectPhase | null
 ): ProjectPhase | null {
   if (!message) return null;
 
@@ -158,14 +158,14 @@ export function extractDeliverables(message: string): PhaseDeliverable[] {
   const fileWithBlockPattern = /##\s*([a-zA-Z0-9_/-]+\.md)\s*\n+```(?:markdown)?\s*\n([\s\S]*?)```/gi;
   let fileBlockMatch;
   while ((fileBlockMatch = fileWithBlockPattern.exec(message)) !== null) {
-    const path = fileBlockMatch[1];
-    const content = fileBlockMatch[2].trim();
+    const path = fileBlockMatch[1]!;
+    const content = fileBlockMatch[2]!.trim();
 
     if (foundPaths.has(path)) continue;
     foundPaths.add(path);
 
     deliverables.push({
-      name: path.split('/').pop() || path,
+      name: path.split('/').pop()! || path,
       path,
       type: 'document',
       preview: content,
@@ -176,14 +176,14 @@ export function extractDeliverables(message: string): PhaseDeliverable[] {
   const createdFilePattern = /(?:created|wrote|generated|saved)\s+(?:file:?\s+)?[`"]?([a-zA-Z0-9_/-]+\.md)[`"]?\s*\n+```(?:markdown)?\s*\n([\s\S]*?)```/gi;
   let createdMatch;
   while ((createdMatch = createdFilePattern.exec(message)) !== null) {
-    const path = createdMatch[1];
-    const content = createdMatch[2].trim();
+    const path = createdMatch[1]!;
+    const content = createdMatch[2]!.trim();
 
     if (foundPaths.has(path)) continue;
     foundPaths.add(path);
 
     deliverables.push({
-      name: path.split('/').pop() || path,
+      name: path.split('/').pop()! || path,
       path,
       type: 'document',
       preview: content,
@@ -194,8 +194,8 @@ export function extractDeliverables(message: string): PhaseDeliverable[] {
   const standaloneBlockPattern = /([a-zA-Z0-9_/-]+\.md)[\s\S]{0,100}?```(?:markdown)?\s*\n([\s\S]*?)```/gi;
   let standaloneMatch;
   while ((standaloneMatch = standaloneBlockPattern.exec(message)) !== null) {
-    const path = standaloneMatch[1];
-    const content = standaloneMatch[2].trim();
+    const path = standaloneMatch[1]!;
+    const content = standaloneMatch[2]!.trim();
 
     // Must have substantial content (more than 50 chars)
     if (content.length < 50) continue;
@@ -204,7 +204,7 @@ export function extractDeliverables(message: string): PhaseDeliverable[] {
     foundPaths.add(path);
 
     deliverables.push({
-      name: path.split('/').pop() || path,
+      name: path.split('/').pop()! || path,
       path,
       type: 'document',
       preview: content,
@@ -215,14 +215,14 @@ export function extractDeliverables(message: string): PhaseDeliverable[] {
   const codeFilePattern = /(?:created|wrote|generated|saved)\s+(?:file:?\s+)?[`"]?([a-zA-Z0-9_/-]+\.(ts|tsx|js|jsx|html|css))[`"]?\s*\n+```(?:\w+)?\s*\n([\s\S]*?)```/gi;
   let codeMatch;
   while ((codeMatch = codeFilePattern.exec(message)) !== null) {
-    const path = codeMatch[1];
-    const content = codeMatch[3].trim();
+    const path = codeMatch[1]!;
+    const content = codeMatch[3]!.trim();
 
     if (foundPaths.has(path)) continue;
     foundPaths.add(path);
 
     deliverables.push({
-      name: path.split('/').pop() || path,
+      name: path.split('/').pop()! || path,
       path,
       type: 'code',
       preview: content,
@@ -281,8 +281,8 @@ export function detectPhaseTransition(message: string): {
     'finalization',
   ];
 
-  const fromIndex = parseInt(match[1]);
-  const toIndex = parseInt(match[2]);
+  const fromIndex = parseInt(match[1]!);
+  const toIndex = parseInt(match[2]!);
 
   return {
     from: phaseOrder[fromIndex] || null,
@@ -297,13 +297,13 @@ export function extractCompletionMessage(message: string): string | undefined {
   // Look for summary or conclusion sections
   const summaryMatch = message.match(/(?:summary|conclusion)[:\s]+(.*?)(?:\n\n|$)/is);
   if (summaryMatch) {
-    return summaryMatch[1].trim().substring(0, 300);
+    return summaryMatch[1]!.trim().substring(0, 300);
   }
 
   // Look for the first paragraph after completion mention
   const completionMatch = message.match(/completed?[.!]\s+(.*?)(?:\n\n|$)/is);
   if (completionMatch) {
-    return completionMatch[1].trim().substring(0, 300);
+    return completionMatch[1]!.trim().substring(0, 300);
   }
 
   return undefined;
@@ -349,6 +349,6 @@ export function detectPhaseStart(message: string): ProjectPhase | null {
     'finalization',
   ];
 
-  const phaseIndex = parseInt(match[1]);
+  const phaseIndex = parseInt(match[1]!);
   return phaseOrder[phaseIndex] || null;
 }
